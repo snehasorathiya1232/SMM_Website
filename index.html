@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="description"
+    content="BHAVISHYAA — Modern social media marketing panel. Schedule and manage organic growth campaigns with precision." />
+  <title>BHAVISHYAA — Social Media Marketing Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/logo.png" />
+  <script type="module" src="/app.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
+
+  <script>
+    (function () {
+      // Restore authenticated session from persistent storage if present across browser restarts / device switches
+      const savedAuth = localStorage.getItem('truesmm-auth-session');
+      if (savedAuth) {
+        try {
+          const parsed = JSON.parse(savedAuth);
+          if (parsed && (parsed.id || parsed.email)) {
+            sessionStorage.setItem('bhavishyaa-authenticated', '1');
+            sessionStorage.setItem('bhavishya-authenticated', '1');
+          }
+        } catch (e) {
+          localStorage.removeItem('truesmm-auth-session');
+        }
+      }
+
+      // If already authenticated, do not overwrite server database records with static visitor mocks
+      const isAuthenticated = !!localStorage.getItem('truesmm-auth-session');
+
+      // Ensure default ratios match video for first-time unauthenticated visitors
+      if (!isAuthenticated && !localStorage.getItem('dev-smm-active-ratios')) {
+        localStorage.setItem('dev-smm-active-ratios', JSON.stringify({
+          likes: 2.5,
+          shares: 1.75,
+          saves: 0.45,
+          comments: 0.05,
+          reposts: 0.85
+        }));
+      }
+
+      // Ensure default API panel 'Yoyo' matches video for first-time visitors
+      const apisRaw = localStorage.getItem('dev-smm-apis');
+      if (!isAuthenticated && (!apisRaw || apisRaw === '[]' || apisRaw === 'null')) {
+        const liveKey = (window.ENV && (window.ENV.YOYO_API_KEY || window.ENV.VITE_YOYO_API_KEY)) || localStorage.getItem('dev-smm-live-key') || "demo_yoyo_key_sec_8921";
+        const yoyoApi = [{
+          id: "api-yoyo-1",
+          name: "Yoyo",
+          url: "https://yoyosmm.com/api/v2",
+          key: liveKey,
+          currency: "INR",
+          exchangeRateToInr: 1,
+          balance: 8.50,
+          services: [
+            { service: "101", name: "Instagram Reels Views - High Quality - Non Drop", type: "Default", category: "Instagram Views", rate: "0.01", min: "100", max: "10000000" },
+            { service: "102", name: "Instagram Likes - Real Active Accounts", type: "Default", category: "Instagram Likes", rate: "0.05", min: "50", max: "500000" },
+            { service: "103", name: "Instagram Shares - Viral Reach Boost", type: "Default", category: "Instagram Shares", rate: "0.03", min: "50", max: "200000" },
+            { service: "104", name: "Instagram Saves - Bookmark Boost", type: "Default", category: "Instagram Saves", rate: "0.02", min: "50", max: "200000" },
+            { service: "105", name: "Instagram Comments - Positive Random", type: "Default", category: "Instagram Comments", rate: "0.15", min: "10", max: "50000" },
+            { service: "106", name: "Instagram Reposts / Story Reshares", type: "Default", category: "Instagram Reposts", rate: "0.08", min: "20", max: "100000" }
+          ]
+        }];
+        localStorage.setItem('dev-smm-apis', JSON.stringify(yoyoApi));
+      }
+
+      // Ensure default Bundle 'Instagram' matches video for first-time visitors
+      const bundlesRaw = localStorage.getItem('dev-smm-bundles');
+      if (!isAuthenticated && (!bundlesRaw || bundlesRaw === '[]' || bundlesRaw === 'null')) {
+        const bundles = [{
+          id: "bundle-ig-1",
+          name: "Instagram",
+          apiId: "api-yoyo-1",
+          serviceIds: {
+            views: "101",
+            likes: "102",
+            shares: "103",
+            saves: "104",
+            comments: "105",
+            reposts: "106"
+          }
+        }];
+        localStorage.setItem('dev-smm-bundles', JSON.stringify(bundles));
+      }
+
+      // Ensure default Orders match video (Active: 1 Running, Cancelled: 1) only if guest/demo
+      const ordersRaw = localStorage.getItem('dev-smm-orders');
+      if (!isAuthenticated && (!ordersRaw || ordersRaw === '[]' || ordersRaw === 'null' || !localStorage.getItem('dev-smm-expiry-v2'))) {
+        localStorage.setItem('dev-smm-expiry-v2', 'true');
+        // Generate schedule runs for ORD-722835 ending in ~90 mins (within 2-hour reminder window)
+        const nowMs = Date.now();
+        const totalRuns = 32;
+        const intervalMs = 30 * 60 * 1000;
+        const endTime = nowMs + 90 * 60 * 1000; // scheduled end time is 1.5h in future
+        const startTime = endTime - (totalRuns - 1) * intervalMs;
+        const runs = [];
+        for (let r = 1; r <= totalRuns; r++) {
+          const runTime = new Date(startTime + (r - 1) * intervalMs);
+          const isDone = runTime.getTime() < nowMs;
+          runs.push({
+            run: r,
+            at: runTime.toISOString(),
+            minutesFromStart: (r - 1) * 30,
+            views: Math.floor(700 + Math.random() * 400),
+            likes: 20,
+            shares: r % 2 === 0 ? 20 : 0,
+            saves: r % 3 === 0 ? 20 : 0,
+            comments: 0,
+            reposts: r % 5 === 0 ? 20 : 0,
+            status: isDone ? "completed" : "pending"
+          });
+        }
+
+        const initialOrders = [
+          {
+            id: "ORD-722835",
+            name: "Mission #ORD-722835",
+            batchId: "batch-1",
+            batchIndex: 1,
+            batchTotal: 1,
+            schedulerOrderId: "SCH-722835",
+            smmOrderId: "Scheduled",
+            link: "https://www.instagram.com/reels/DZb03qdOoZz/",
+            totalViews: 50000,
+            startDelayHours: 0,
+            patternType: "multi-spike-viral",
+            patternName: "Multi-Spike Viral",
+            runs: runs,
+            engagement: { likes: 1250, shares: 875, saves: 225, comments: 25, reposts: 425 },
+            serviceId: "101",
+            selectedAPI: "Yoyo",
+            selectedBundle: "Instagram",
+            status: "running",
+            completedRuns: runs.filter(r => r.status === "completed").length,
+            runStatuses: runs.map(r => r.status),
+            createdAt: new Date(startTime).toISOString(),
+            lastUpdatedAt: new Date().toISOString()
+          },
+          {
+            id: "ORD-681920",
+            name: "Mission #ORD-681920",
+            batchId: "batch-2",
+            batchIndex: 1,
+            batchTotal: 1,
+            schedulerOrderId: "SCH-681920",
+            smmOrderId: "Cancelled",
+            link: "https://www.instagram.com/reels/CXy789abCde/",
+            totalViews: 25000,
+            startDelayHours: 0,
+            patternType: "s-curve",
+            patternName: "S-Curve",
+            runs: runs.slice(0, 32).map((r, i) => ({ ...r, status: i < 8 ? "completed" : "cancelled" })),
+            engagement: { likes: 625, shares: 437, saves: 112, comments: 12, reposts: 212 },
+            serviceId: "101",
+            selectedAPI: "Yoyo",
+            selectedBundle: "Instagram",
+            status: "cancelled",
+            completedRuns: 8,
+            runStatuses: runs.slice(0, 32).map((_, i) => i < 8 ? "completed" : "cancelled"),
+            createdAt: "2026-06-28T09:12:00.000Z",
+            lastUpdatedAt: "2026-06-28T14:30:00.000Z"
+          }
+        ];
+        localStorage.setItem('dev-smm-orders', JSON.stringify(initialOrders));
+      }
+
+      // Default active page
+      if (!localStorage.getItem('dev-smm-active-page')) {
+        localStorage.setItem('dev-smm-active-page', 'new-order');
+      }
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>
