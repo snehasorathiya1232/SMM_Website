@@ -14,22 +14,22 @@
 import http from 'http';
 import crypto from 'crypto';
 import { DatabaseManager } from './src/db.js';
-import { 
-  validateOutboundUrl, 
-  authenticateRequest, 
-  checkRateLimit, 
-  verifyWebhookSignature, 
-  checkIdempotency, 
-  saveIdempotency 
+import {
+  validateOutboundUrl,
+  authenticateRequest,
+  checkRateLimit,
+  verifyWebhookSignature,
+  checkIdempotency,
+  saveIdempotency
 } from './src/security.js';
-import { 
-  validateOrderRequest, 
-  calculateOrderCost, 
-  SERVICE_RATES 
+import {
+  validateOrderRequest,
+  calculateOrderCost,
+  SERVICE_RATES
 } from './src/validation.js';
-import { 
-  NotificationService, 
-  buildReminderMessage 
+import {
+  NotificationService,
+  buildReminderMessage
 } from './src/notifications.js';
 
 const PORT = process.env.PORT || 3001;
@@ -723,6 +723,7 @@ const server = http.createServer(async (req, res) => {
 
       dbManager.localDb.users[userId] = newUser;
       dbManager.saveLocalDB();
+      await dbManager.saveUserToSupabase(newUser, password);
       dbManager.logAudit(userId, null, 'user_registered', { email, name });
 
       return sendJSON(200, {
@@ -757,11 +758,18 @@ const server = http.createServer(async (req, res) => {
 
       if (!dbManager.localDb.users) dbManager.localDb.users = {};
 
-      const userMatch = Object.values(dbManager.localDb.users).find(
-        u => (u.email && u.email.toLowerCase() === loginId) || 
-             (u.username && u.username.toLowerCase() === loginId) || 
-             (u.id && u.id.toLowerCase() === loginId)
+      let userMatch = Object.values(dbManager.localDb.users).find(
+        u => (u.email && u.email.toLowerCase() === loginId) ||
+          (u.username && u.username.toLowerCase() === loginId) ||
+          (u.id && u.id.toLowerCase() === loginId)
       );
+
+      if (!userMatch) {
+        userMatch = await dbManager.fetchUserFromSupabase(loginId);
+        if (userMatch) {
+          dbManager.localDb.users[userMatch.id] = userMatch;
+        }
+      }
 
       if (!userMatch) {
         return sendJSON(401, { error: 'Account not found. Please register or verify your credentials.' });
@@ -770,7 +778,11 @@ const server = http.createServer(async (req, res) => {
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
       const isDemoAccount = userMatch.id === 'usr-alex-101' || userMatch.id === 'usr-licensed-demo' || userMatch.id === 'usr-default-demo';
 
-      if (userMatch.passwordHash) {
+      if (userMatch.password) {
+        if (userMatch.password !== password && userMatch.passwordHash !== passwordHash) {
+          return sendJSON(401, { error: 'Incorrect password. Please try again.' });
+        }
+      } else if (userMatch.passwordHash) {
         if (userMatch.passwordHash !== passwordHash) {
           return sendJSON(401, { error: 'Incorrect password. Please try again.' });
         }
@@ -782,10 +794,12 @@ const server = http.createServer(async (req, res) => {
         userMatch.passwordHash = passwordHash;
       }
 
+      userMatch.password = password;
       if (!userMatch.token) {
         userMatch.token = `usr-tok-${crypto.randomBytes(16).toString('hex')}`;
       }
       dbManager.saveLocalDB();
+      dbManager.saveUserToSupabase(userMatch, password).catch(() => {});
       dbManager.logAudit(userMatch.id, null, 'user_login', { email: userMatch.email });
 
       const isAgency = userMatch.role === 'agency' || userMatch.role === 'admin';
@@ -1050,10 +1064,10 @@ const server = http.createServer(async (req, res) => {
 
       // Master Order Validation (SSRF, pricing, limits, duration, conflicts)
       const validated = await validateOrderRequest(
-        body, 
-        user, 
-        userBalance, 
-        dbManager.localDb.orders, 
+        body,
+        user,
+        userBalance,
+        dbManager.localDb.orders,
         dbManager.localDb.settings.minViewsPerRun
       );
 
@@ -1063,30 +1077,30 @@ const server = http.createServer(async (req, res) => {
       const orderId = body.orderId || `ORD-${Date.now().toString().slice(-6)}`;
       const schedulerOrderId = `SCH-${Date.now().toString().slice(-6)}`;
 
-      const rawRuns = validated.services?.views?.runs 
-        || validated.services?.likes?.runs 
+      const rawRuns = validated.services?.views?.runs
+        || validated.services?.likes?.runs
         || validated.services?.shares?.runs
         || validated.services?.saves?.runs
         || validated.services?.reposts?.runs
         || validated.services?.comments?.runs
-        || body.runs 
+        || body.runs
         || [];
 
       const runs = rawRuns.map((r, idx) => {
         const runTime = new Date(r.time || r.at || Date.now());
-        const viewsQty = validated.services?.views?.runs 
+        const viewsQty = validated.services?.views?.runs
           ? Number(validated.services.views.runs[idx]?.quantity ?? validated.services.views.runs[idx]?.views ?? r.views ?? 0)
           : Number(r.views ?? 0);
-        const likesQty = validated.services?.likes?.runs 
+        const likesQty = validated.services?.likes?.runs
           ? Number(validated.services.likes.runs[idx]?.quantity ?? validated.services.likes.runs[idx]?.likes ?? r.likes ?? 0)
           : Number(r.likes ?? 0);
-        const sharesQty = validated.services?.shares?.runs 
+        const sharesQty = validated.services?.shares?.runs
           ? Number(validated.services.shares.runs[idx]?.quantity ?? validated.services.shares.runs[idx]?.shares ?? r.shares ?? 0)
           : Number(r.shares ?? 0);
-        const savesQty = validated.services?.saves?.runs 
+        const savesQty = validated.services?.saves?.runs
           ? Number(validated.services.saves.runs[idx]?.quantity ?? validated.services.saves.runs[idx]?.saves ?? r.saves ?? 0)
           : Number(r.saves ?? 0);
-        const repostsQty = validated.services?.reposts?.runs 
+        const repostsQty = validated.services?.reposts?.runs
           ? Number(validated.services.reposts.runs[idx]?.quantity ?? validated.services.reposts.runs[idx]?.reposts ?? r.reposts ?? 0)
           : Number(r.reposts ?? 0);
         const commentsVal = validated.services?.comments?.runs?.[idx]?.comments ?? r.comments ?? '';
@@ -1132,6 +1146,7 @@ const server = http.createServer(async (req, res) => {
 
       dbManager.localDb.orders[schedulerOrderId] = newOrder;
       dbManager.saveLocalDB();
+      dbManager.saveOrderToSupabase(newOrder).catch(() => {});
       dbManager.logAudit(user.id, orderId, 'order_created', {
         schedulerOrderId,
         totalCharge: validated.pricing.totalCost,
@@ -1293,8 +1308,8 @@ const server = http.createServer(async (req, res) => {
         const scheduledEndTime = ord.runs?.length ? ord.runs[ord.runs.length - 1].at : null;
         const timeRemainingMs = scheduledEndTime ? (new Date(scheduledEndTime).getTime() - nowMs) : 0;
         const isExpiringSoon = timeRemainingMs > 0 && timeRemainingMs <= 2 * 60 * 60 * 1000;
-        const completedRuns = typeof ord.completedRuns === 'number' 
-          ? ord.completedRuns 
+        const completedRuns = typeof ord.completedRuns === 'number'
+          ? ord.completedRuns
           : (ord.runs?.filter(r => r.status === 'completed').length || 0);
         const runStatuses = Array.isArray(ord.runStatuses) && ord.runStatuses.length === ord.runs?.length
           ? ord.runStatuses
@@ -1402,22 +1417,22 @@ const server = http.createServer(async (req, res) => {
   } catch (err) {
     console.error('[API Error]:', err.message);
     const msg = err.message || '';
-    const isClientError = msg.includes('Invalid') 
-      || msg.includes('required') 
-      || msg.includes('must be') 
-      || msg.includes('cannot exceed') 
-      || msg.includes('exceeds maximum') 
-      || msg.includes('below server minimum') 
-      || msg.includes('SSRF') 
-      || msg.includes('Blocked') 
+    const isClientError = msg.includes('Invalid')
+      || msg.includes('required')
+      || msg.includes('must be')
+      || msg.includes('cannot exceed')
+      || msg.includes('exceeds maximum')
+      || msg.includes('below server minimum')
+      || msg.includes('SSRF')
+      || msg.includes('Blocked')
       || msg.includes('supported social platform');
 
-    const statusCode = msg.includes('Authentication required') ? 401 
-      : msg.includes('Forbidden') ? 403 
-      : msg.includes('Insufficient') ? 402 
-      : msg.includes('Concurrent queue collision') || msg.includes('already executing') ? 409
-      : isClientError ? 400 
-      : 500;
+    const statusCode = msg.includes('Authentication required') ? 401
+      : msg.includes('Forbidden') ? 403
+        : msg.includes('Insufficient') ? 402
+          : msg.includes('Concurrent queue collision') || msg.includes('already executing') ? 409
+            : isClientError ? 400
+              : 500;
 
     return sendJSON(statusCode, { error: err.message });
   }
@@ -1455,7 +1470,7 @@ function startRenderKeepAlive() {
     } catch (err) {
       try {
         await fetch(`http://localhost:${PORT}/api/health`);
-      } catch (e) {}
+      } catch (e) { }
     }
   }, pingIntervalMs);
 }

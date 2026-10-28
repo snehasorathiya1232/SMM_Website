@@ -215,8 +215,8 @@ export async function validateOrderRequest(body, user, userBalance, existingOrde
     throw new Error('Invalid request payload: must be a JSON object.');
   }
 
-  const name = typeof body.name === 'string' && body.name.trim() 
-    ? body.name.trim().slice(0, 120) 
+  const name = typeof body.name === 'string' && body.name.trim()
+    ? body.name.trim().slice(0, 120)
     : `Mission #${Date.now().toString().slice(-6)}`;
 
   // 2. Validate Link & SSRF
@@ -234,13 +234,13 @@ export async function validateOrderRequest(body, user, userBalance, existingOrde
   }
 
   // 5. Build and validate runs
-  const rawRuns = services.views?.runs 
-    || services.likes?.runs 
+  const rawRuns = services.views?.runs
+    || services.likes?.runs
     || services.shares?.runs
     || services.saves?.runs
     || services.reposts?.runs
     || services.comments?.runs
-    || body.runs 
+    || body.runs
     || [];
   const scheduleMeta = validateSchedulingCadence(rawRuns, minViewsSetting);
 

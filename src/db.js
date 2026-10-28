@@ -27,8 +27,8 @@ if (!fs.existsSync(DATA_DIR)) {
 
 export class DatabaseManager {
   constructor() {
-    this.supabaseUrl = process.env.SUPABASE_URL || 'https://ofcewgbvfmnjczvzyqqs.supabase.co';
-    this.supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_UJQYYRLtwyAO_7GONFb88w_wReU-L5F';
+    this.supabaseUrl = process.env.SUPABASE_URL || 'https://nctldqgragkuoaqliwip.supabase.co';
+    this.supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdGxkcWdyYWdrdW9hcWxpd2lwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzIwMDExMywiZXhwIjoyMTA4Nzc2MTEzfQ.eSK0xY2e1ay1BeE0UGbP82mRuxakPQ_QjtfJB-nH-YE';
     this.supabaseClient = null;
 
     if (this.supabaseUrl && this.supabaseKey) {
@@ -200,6 +200,7 @@ export class DatabaseManager {
     if (updates.activeRatios !== undefined) current.activeRatios = updates.activeRatios;
     if (updates.ratioPresets !== undefined) current.ratioPresets = updates.ratioPresets;
     this.saveLocalDB();
+    this.syncUserConfigToSupabase(userId, current).catch(() => {});
     return current;
   }
 
@@ -344,6 +345,162 @@ export class DatabaseManager {
       }
     }
     return true;
+  }
+
+  /**
+   * Save / Sync User to Supabase PostgreSQL (Visible in pgAdmin)
+   */
+  async saveUserToSupabase(user, plainPassword) {
+    if (!this.supabaseClient || !user) return;
+    try {
+      const row = {
+        id: user.id,
+        email: user.email,
+        name: user.name || user.username || user.email.split('@')[0],
+        username: user.username || user.email.split('@')[0],
+        password: plainPassword || user.password || null,
+        password_hash: user.passwordHash || null,
+        role: user.role === 'agency' || user.role === 'Agency Lead' ? 'agency' : (user.role === 'admin' ? 'admin' : 'user'),
+        balance: typeof user.balance === 'number' ? user.balance : 25.00,
+        plan: user.plan || 'Starter Pacing Pro',
+        token: user.token || null,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await this.supabaseClient.from('users').upsert(row, { onConflict: 'id' });
+      if (error) {
+        console.warn('[DB] Supabase user upsert notice:', error.message);
+      } else {
+        console.info(`[DB] Successfully saved user ${user.id} (${user.email}) to Supabase.`);
+      }
+    } catch (err) {
+      console.warn('[DB] Supabase user sync error:', err.message);
+    }
+  }
+
+  /**
+   * Look up user from Supabase if not present in local store
+   */
+  async fetchUserFromSupabase(loginId) {
+    if (!this.supabaseClient || !loginId) return null;
+    try {
+      const clean = String(loginId).trim().toLowerCase();
+      const { data, error } = await this.supabaseClient
+        .from('users')
+        .select('*')
+        .or(`email.ilike.${clean},username.ilike.${clean},id.eq.${clean}`)
+        .maybeSingle();
+
+      if (!error && data) {
+        return {
+          id: data.id,
+          email: data.email,
+          name: data.name || data.username || data.email.split('@')[0],
+          username: data.username || data.email.split('@')[0],
+          password: data.password || undefined,
+          passwordHash: data.password_hash || undefined,
+          role: data.role || 'user',
+          balance: Number(data.balance || 0),
+          plan: data.plan || 'Starter Pacing Pro',
+          token: data.token || null,
+          createdAt: data.created_at
+        };
+      }
+    } catch (err) {
+      console.warn('[DB] Supabase fetch user error:', err.message);
+    }
+    return null;
+  }
+
+  /**
+   * Sync SMM APIs and Configurations to Supabase
+   */
+  async syncUserConfigToSupabase(userId, config) {
+    if (!this.supabaseClient || !userId) return;
+    try {
+      // 1. Sync individual SMM APIs to user_apis table
+      if (Array.isArray(config.apis)) {
+        for (const api of config.apis) {
+          if (!api.id) continue;
+          await this.supabaseClient.from('user_apis').upsert({
+            id: api.id,
+            user_id: userId,
+            name: api.name || 'SMM Provider',
+            url: api.url || '',
+            api_key: api.key || '',
+            currency: api.currency || 'INR',
+            exchange_rate_to_inr: Number(api.exchangeRateToInr || 1.0),
+            balance: Number(api.balance || 0),
+            services: api.services || [],
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        }
+      }
+
+      // 2. Sync bundles, active ratios and presets to user_configs table
+      await this.supabaseClient.from('user_configs').upsert({
+        user_id: userId,
+        bundles: config.bundles || [],
+        active_ratios: config.activeRatios || {},
+        ratio_presets: config.ratioPresets || [],
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      
+      console.info(`[DB] Successfully synced SMM APIs and configurations for user ${userId} to Supabase.`);
+    } catch (err) {
+      console.warn('[DB] Supabase syncUserConfig error:', err.message);
+    }
+  }
+
+  /**
+   * Sync Order & Discrete Runs to Supabase PostgreSQL
+   */
+  async saveOrderToSupabase(order) {
+    if (!this.supabaseClient || !order) return;
+    try {
+      const orderId = order.id || order.schedulerOrderId;
+      const userId = order.userId || 'usr-admin-01';
+
+      // Ensure user exists first for foreign key constraint
+      const orderUser = this.getUser(userId);
+      await this.saveUserToSupabase(orderUser);
+
+      const orderRow = {
+        id: orderId,
+        scheduler_order_id: order.schedulerOrderId || orderId,
+        user_id: userId,
+        name: order.name || `Order ${orderId}`,
+        link: order.link || '',
+        status: order.status || 'running',
+        total_views: Number(order.totalViews || 0),
+        total_charge: Number(order.totalCharge || 0),
+        currency: order.currency || 'USD',
+        scheduled_end_time: order.scheduledEndTime || new Date().toISOString(),
+        created_at: order.createdAt || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      await this.supabaseClient.from('orders').upsert(orderRow, { onConflict: 'id' });
+
+      if (Array.isArray(order.runs) && order.runs.length > 0) {
+        const runsRows = order.runs.map((r, idx) => ({
+          order_id: orderId,
+          run_number: r.run || (idx + 1),
+          scheduled_at: r.at || new Date().toISOString(),
+          views: Number(r.views || 0),
+          likes: Number(r.likes || 0),
+          shares: Number(r.shares || 0),
+          saves: Number(r.saves || 0),
+          reposts: Number(r.reposts || 0),
+          comments: typeof r.comments === 'string' ? r.comments : (r.comments ? String(r.comments) : ''),
+          status: r.status || 'pending',
+          skip_reason: r.skipReason || null,
+          error: r.error || null
+        }));
+        await this.supabaseClient.from('order_runs').upsert(runsRows, { onConflict: 'order_id,run_number' });
+      }
+      console.info(`[DB] Successfully saved order ${orderId} to Supabase.`);
+    } catch (err) {
+      console.warn('[DB] Supabase saveOrder error:', err.message);
+    }
   }
 }
 
