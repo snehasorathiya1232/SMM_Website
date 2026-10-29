@@ -159,8 +159,8 @@ async function runSchedulerCycle() {
 
     const queueId = order.link ? order.link.replace(/\/+$/, '').toLowerCase() : orderId;
 
-    // RULE 1 & 2: Check if this queue is currently busy executing an order
-    const isBusy = activeQueueLocks.has(queueId);
+    // RULE 1: Global Concurrency Lock (No order execution when ANY order is already in execution)
+    const isGlobalExecutionBusy = activeQueueLocks.size > 0 || Object.values(db.orders).some(o => o.id !== orderId && (o.runs || []).some(r => r.status === 'executing'));
 
     // Look for due runs in this order
     for (let i = 0; i < runs.length; i++) {
@@ -175,26 +175,44 @@ async function runSchedulerCycle() {
         continue;
       }
 
-      // RULE 3 & 4: Check if expired!
-      if (isBusy || diffMs > MAX_LATENCY_WINDOW_MS) {
-        run.status = 'skipped';
-        run.skippedAt = now.toISOString();
+      const isBusy = isGlobalExecutionBusy || activeQueueLocks.has(queueId) || activeQueueLocks.has(orderId);
+
+      // RULE 3 & 4: Exceeded tolerance window (e.g. above 3:31 for a 3:30 order)
+      // When 1 order is in execution past the 60s window, the due order is paused and goes to the CANCELLED section
+      if (diffMs > MAX_LATENCY_WINDOW_MS) {
+        run.status = 'cancelled';
+        run.cancelledAt = now.toISOString();
         run.skipReason = isBusy
-          ? `Skipped: Queue is busy executing previous run. Expired to maintain pacing schedule.`
-          : `Skipped: Missed scheduled window by ${Math.round(diffMs / 1000)}s. Never started late.`;
+          ? `Cancelled: Another order was executing. Missed scheduled window by ${Math.round(diffMs / 1000)}s (> 60s latency window).`
+          : `Cancelled: Missed scheduled window by ${Math.round(diffMs / 1000)}s. Never started late.`;
+
+        // Move the entire order into the cancelled section
+        order.status = 'cancelled';
+        order.cancelledAt = now.toISOString();
+        order.cancelReason = run.skipReason;
         modified = true;
-        console.warn(`[Scheduler - Rule 3&4] Run #${run.run} of ${orderId} marked SKIPPED: ${run.skipReason}`);
+        console.warn(`[Scheduler - Concurrency] Order ${orderId} marked CANCELLED: ${run.skipReason}`);
+        dbManager.saveOrderToSupabase(order).catch(() => {});
         continue;
       }
 
-      // RULE 1 & 2: Acquire single-threaded queue lock
+      // If scheduled time has arrived (e.g. between 3:30 and 3:31), but another order is currently executing:
+      // PAUSE execution — strictly wait so no 2 orders ever execute simultaneously
+      if (isBusy) {
+        console.info(`[Scheduler - Concurrency Pause] Order ${orderId} waiting at ${now.toLocaleTimeString()} — another order is currently in execution.`);
+        continue;
+      }
+
+      // RULE 1 & 2: Acquire single-threaded global execution lock
+      activeQueueLocks.add(orderId);
       activeQueueLocks.add(queueId);
       run.status = 'executing';
       run.startedAt = now.toISOString();
       modified = true;
       dbManager.saveLocalDB();
+      dbManager.saveOrderToSupabase(order).catch(() => {});
 
-      console.info(`[Scheduler - Rule 1&2] Starting Run #${run.run} for order ${orderId} (Queue: ${queueId})`);
+      console.info(`[Scheduler - Rule 1&2] Starting Run #${run.run} for order ${orderId} (Global Concurrency Lock acquired)`);
 
       // Execute run asynchronously with atomic lock release (Rule 7)
       executeSingleRun(orderId, queueId, i, run)
@@ -202,9 +220,10 @@ async function runSchedulerCycle() {
           console.error(`[Scheduler - Rule 7] Run #${run.run} error:`, err.message);
         })
         .finally(() => {
-          // Rule 1 & 7: ALWAYS release lock so queue never freezes
+          // Rule 1 & 7: ALWAYS release lock so next waiting order can execute
+          activeQueueLocks.delete(orderId);
           activeQueueLocks.delete(queueId);
-          console.info(`[Scheduler - Lock Released] Queue ${queueId} is now IDLE.`);
+          console.info(`[Scheduler - Lock Released] Order ${orderId} completed. System is now IDLE.`);
         });
 
       // Break out so only 1 run starts at a time per queue
@@ -1332,6 +1351,13 @@ const server = http.createServer(async (req, res) => {
             isExpiringSoon
           }
         };
+      });
+
+      // Sort orders chronologically as per their scheduled execution time (3:00, 3:30, 4:00)
+      enrichedOrders.sort((a, b) => {
+        const timeA = (a.runs && a.runs[0] && a.runs[0].at) ? new Date(a.runs[0].at).getTime() : new Date(a.createdAt || 0).getTime();
+        const timeB = (b.runs && b.runs[0] && b.runs[0].at) ? new Date(b.runs[0].at).getTime() : new Date(b.createdAt || 0).getTime();
+        return timeA - timeB;
       });
 
       return sendJSON(200, {
