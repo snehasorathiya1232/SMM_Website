@@ -477,3 +477,6 @@
   margin: 0 !important;
   text-align: left !important;
 }
+
+/* 5-column balanced grid support */
+.grid-cols-5 { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
