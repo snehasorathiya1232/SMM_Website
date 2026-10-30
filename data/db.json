@@ -25947,7 +25947,7 @@
     }
   },
   "settings": {
-    "minViewsPerRun": 248,
+    "minViewsPerRun": 157,
     "timezone": "America/New_York"
   },
   "logs": [],
@@ -33696,7 +33696,8 @@
               "max": "100000"
             }
           ],
-          "status": "Active"
+          "status": "Active",
+          "lastFetchError": "Endpoint not found"
         }
       ],
       "bundles": [

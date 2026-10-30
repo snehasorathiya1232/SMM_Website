@@ -441,7 +441,7 @@ async function cancelOrderWithProviderVerification(orderId, userId = null) {
  * Order Extension Handler (Phase 4)
  * Authenticates user, calculates extension charge, deducts balance, and updates scheduled end time
  */
-export async function extendOrder(orderId, { extensionHours = 12, additionalRuns = 0 } = {}, user = null) {
+export async function extendOrder(orderId, { extensionHours = 12, additionalRuns = 0, additionalLikes = 0, additionalViews = 0 } = {}, user = null) {
   const order = findOrder(orderId);
   if (!order) throw new Error(`Order not found: ${orderId}`);
 
@@ -468,14 +468,19 @@ export async function extendOrder(orderId, { extensionHours = 12, additionalRuns
   }
 
   const hours = Math.max(1, Number(extensionHours) || 12);
+  const addLikes = Math.max(0, Number(additionalLikes) || 0);
+  const addViews = Math.max(0, Number(additionalViews) || 0);
   const extensionMs = hours * 60 * 60 * 1000;
   const countToAdd = additionalRuns > 0 ? Number(additionalRuns) : Math.max(1, Math.round(extensionMs / runIntervalMs));
 
   const avgViews = Math.round(runs.reduce((s, r) => s + (r.views || 0), 0) / runs.length) || 500;
   const avgLikes = Math.round(runs.reduce((s, r) => s + (r.likes || 0), 0) / runs.length) || 25;
 
+  const viewsPerRun = addViews > 0 ? Math.max(10, Math.round(addViews / countToAdd)) : avgViews;
+  const likesPerRun = addLikes > 0 ? Math.max(0, Math.round(addLikes / countToAdd)) : avgLikes;
+
   // Calculate Extension Pricing Server-Side
-  const extensionCost = Math.round(countToAdd * (avgViews * SERVICE_RATES.views + avgLikes * SERVICE_RATES.likes) * 100) / 100;
+  const extensionCost = Math.round(countToAdd * (viewsPerRun * SERVICE_RATES.views + likesPerRun * SERVICE_RATES.likes) * 100) / 100;
 
   // Verify and deduct balance
   if (user && user.id) {
@@ -490,12 +495,13 @@ export async function extendOrder(orderId, { extensionHours = 12, additionalRuns
     const newRun = {
       run: startRunNum + idx,
       at: nextTime.toISOString(),
-      views: avgViews,
-      likes: avgLikes,
+      views: viewsPerRun,
+      likes: likesPerRun,
       shares: 0,
       saves: 0,
       reposts: 0,
       comments: '',
+      isAddition: true,
       status: 'pending' // Rule 5: stays pending until scheduled time
     };
     runs.push(newRun);
@@ -506,6 +512,16 @@ export async function extendOrder(orderId, { extensionHours = 12, additionalRuns
   order.scheduledEndTime = newEndTime;
   order.extendedCount = (order.extendedCount || 0) + 1;
   order.totalExtendedHours = (order.totalExtendedHours || 0) + hours;
+  order.addedHours = (order.addedHours || 0) + hours;
+  order.addedLikes = (order.addedLikes || 0) + (addLikes > 0 ? addLikes : (likesPerRun * countToAdd));
+  order.addedViews = (order.addedViews || 0) + (addViews > 0 ? addViews : (viewsPerRun * countToAdd));
+  order.additions = order.additions || [];
+  order.additions.push({
+    hours,
+    likes: addLikes > 0 ? addLikes : (likesPerRun * countToAdd),
+    views: addViews > 0 ? addViews : (viewsPerRun * countToAdd),
+    addedAt: new Date().toISOString()
+  });
   order.extended = true;
   order.extendedAt = new Date().toISOString();
   order.status = 'running';
@@ -519,21 +535,25 @@ export async function extendOrder(orderId, { extensionHours = 12, additionalRuns
   dbManager.saveLocalDB();
   dbManager.logAudit(user?.id || order.userId, orderId, 'order_extended', {
     extensionHours: hours,
+    additionalLikes: addLikes,
     addedRunsCount: countToAdd,
     extensionCost,
     newEndTime
   });
 
-  console.info(`[Order Extension] Order ${orderId} extended by +${hours}h. Cost: $${extensionCost.toFixed(2)}. New end: ${newEndTime}`);
+  console.info(`[Order Extension] Order ${orderId} extended by +${hours}h and +${addLikes} likes. Cost: ${extensionCost.toFixed(2)}. New end: ${newEndTime}`);
 
   return {
     success: true,
     orderId,
     schedulerOrderId: order.schedulerOrderId,
-    message: `Order extended by ${hours} hours. New scheduled end time: ${newEndTime}`,
+    message: `Order extended by ${hours} hours and +${addLikes} likes. New scheduled end time: ${newEndTime}`,
     newEndTime,
     totalRuns: runs.length,
     addedRunsCount: countToAdd,
+    addedLikes: addLikes > 0 ? addLikes : (likesPerRun * countToAdd),
+    addedHours: hours,
+    additions: order.additions,
     extensionCost,
     addedRuns: newRuns
   };
