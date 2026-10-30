@@ -505,15 +505,3 @@ runTestSuite().catch(err => {
   console.error('Test Suite Fatal Error:', err);
   process.exit(1);
 });
-  } finally {
-  if (serverProcess) {
-    serverProcess.kill();
-  }
-}
-}
-
-runTestSuite().catch(err => {
-  if (serverProcess) serverProcess.kill();
-  console.error('Test Suite Fatal Error:', err);
-  process.exit(1);
-});

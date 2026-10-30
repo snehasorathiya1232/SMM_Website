@@ -83,6 +83,22 @@ async function callSmmProvider({ apiUrl, apiKey, action, params = {} }) {
         order: params.order || params.orders
       };
     }
+    if (action === 'services') {
+      return [
+        { service: '101', name: 'Instagram Reels Views - High Quality - Non Drop', type: 'Default', category: 'Instagram Views', rate: '0.01', min: '100', max: '10000000' },
+        { service: '102', name: 'Instagram Likes - Real Active Accounts', type: 'Default', category: 'Instagram Likes', rate: '0.05', min: '50', max: '500000' },
+        { service: '103', name: 'Instagram Shares - Viral Reach Boost', type: 'Default', category: 'Instagram Shares', rate: '0.03', min: '50', max: '200000' },
+        { service: '104', name: 'Instagram Saves - Bookmark Boost', type: 'Default', category: 'Instagram Saves', rate: '0.02', min: '50', max: '200000' },
+        { service: '105', name: 'Instagram Comments - Positive Random', type: 'Default', category: 'Instagram Comments', rate: '0.15', min: '10', max: '50000' },
+        { service: '106', name: 'Instagram Reposts / Story Reshares', type: 'Default', category: 'Instagram Reposts', rate: '0.08', min: '20', max: '100000' }
+      ];
+    }
+    if (action === 'balance') {
+      return {
+        balance: '8.50',
+        currency: 'INR'
+      };
+    }
   }
 
   // Real outbound SMM Provider call
@@ -709,6 +725,59 @@ const server = http.createServer(async (req, res) => {
         }
         return sendJSON(200, { success: true, minViewsPerRun: dbManager.localDb.settings.minViewsPerRun });
       }
+    }
+
+    if (pathname === '/api/settings/max-views') {
+      if (req.method === 'GET') {
+        return sendJSON(200, { maxViewsPerRun: dbManager.localDb.settings.maxViewsPerRun || 2500 });
+      }
+      if (req.method === 'POST') {
+        const body = await readBody();
+        if (body.maxViewsPerRun !== undefined) {
+          dbManager.localDb.settings.maxViewsPerRun = Number(body.maxViewsPerRun);
+          dbManager.saveLocalDB();
+        }
+        return sendJSON(200, { success: true, maxViewsPerRun: dbManager.localDb.settings.maxViewsPerRun });
+      }
+    }
+
+    // Provider Services Catalog Proxy
+    if (pathname === '/api/services' && req.method === 'POST') {
+      const body = await readBody();
+      const { apiUrl, apiKey } = body;
+      if (!apiUrl) {
+        return sendJSON(400, { error: 'apiUrl is required' });
+      }
+      const services = await callSmmProvider({ apiUrl, apiKey, action: 'services' });
+      return sendJSON(200, services);
+    }
+
+    // Provider Pricing & Balance Metadata Proxy
+    if (pathname === '/api/panel/pricing-meta' && req.method === 'POST') {
+      const body = await readBody();
+      const { apiUrl, apiKey, currency: requestedCurrency } = body;
+      let balance = 0;
+      let detectedCurrency = requestedCurrency || 'INR';
+      try {
+        const balData = await callSmmProvider({ apiUrl, apiKey, action: 'balance' });
+        if (balData) {
+          balance = parseFloat(balData.balance) || 0;
+          if (balData.currency) detectedCurrency = balData.currency;
+        }
+      } catch (e) {
+        console.warn('[Pricing Meta] Balance warning:', e.message);
+      }
+      let exchangeRateToInr = 1;
+      if (String(detectedCurrency).toUpperCase() === 'USD') {
+        exchangeRateToInr = 83.5;
+      }
+      return sendJSON(200, {
+        currency: detectedCurrency,
+        currencySource: 'panel',
+        exchangeRateToInr,
+        exchangeRateUpdatedAt: new Date().toISOString(),
+        balance
+      });
     }
 
     // =========================================================================

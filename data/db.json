@@ -25948,7 +25948,8 @@
   },
   "settings": {
     "minViewsPerRun": 157,
-    "timezone": "America/New_York"
+    "timezone": "America/New_York",
+    "maxViewsPerRun": 2500
   },
   "logs": [],
   "users": {
