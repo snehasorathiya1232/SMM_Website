@@ -801,7 +801,7 @@ ${j}`}class Xt extends Error{constructor({message:t,code:n,cause:r,name:i}){var 
     try {
       let data = null;
       try {
-        const res = await fetch("/api/auth/login", {
+        const res = await fetch(`${Nd}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: signInEmail.trim(), password: signInPass })
@@ -840,7 +840,7 @@ ${j}`}class Xt extends Error{constructor({message:t,code:n,cause:r,name:i}){var 
     try {
       let data = null;
       try {
-        const res = await fetch("/api/auth/demo", {
+        const res = await fetch(`${Nd}/api/auth/demo`, {
           method: "POST",
           headers: { "Content-Type": "application/json" }
         });
@@ -898,7 +898,7 @@ ${j}`}class Xt extends Error{constructor({message:t,code:n,cause:r,name:i}){var 
     try {
       let data = null;
       try {
-        const res = await fetch("/api/auth/register", {
+        const res = await fetch(`${Nd}/api/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -949,7 +949,7 @@ ${j}`}class Xt extends Error{constructor({message:t,code:n,cause:r,name:i}){var 
     try {
       let data = null;
       try {
-        const res = await fetch("/api/auth/verify-license", {
+        const res = await fetch(`${Nd}/api/auth/verify-license`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ licenseKey: key })
@@ -1631,7 +1631,7 @@ ${j}`}class Xt extends Error{constructor({message:t,code:n,cause:r,name:i}){var 
                 try {
                   let data = null;
                   try {
-                    const res = await fetch("/api/auth/forgot-password", {
+                    const res = await fetch(`${Nd}/api/auth/forgot-password`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ email: forgotEmail.trim() })
