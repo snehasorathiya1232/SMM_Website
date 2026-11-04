@@ -692,18 +692,19 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
   return g.jsxs("div", {
     className: "mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 space-y-6",
     children: [
+      // Top Header
       g.jsx(Ep, {
         eyebrow: "Account Management",
         title: "My Account & Profile",
         description: "View and manage your account identity, security credentials, license key, and wallet.",
         actions: g.jsxs("div", {
-          className: "flex items-center gap-2",
+          className: "flex items-center gap-2.5",
           children: [
             g.jsxs(Ce, {
               variant: "primary",
               size: "sm",
               onClick: onOpenDeposit,
-              className: "flex items-center gap-1.5",
+              className: "flex items-center gap-1.5 shadow-sm",
               children: [
                 g.jsx("span", { children: "💳" }),
                 g.jsx("span", { children: "Deposit Funds" })
@@ -719,21 +720,22 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
         })
       }),
 
-      g.jsx(dt, {
-        padding: "lg",
-        className: "relative overflow-hidden border-indigo-100 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md",
+      // Banner Hero Card (Crisp light theme with high contrast)
+      g.jsx("div", {
+        className: "rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm",
         children: g.jsxs("div", {
-          className: "flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10",
+          className: "flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between",
           children: [
+            // User Avatar & Identity
             g.jsxs("div", {
-              className: "flex items-center gap-4 sm:gap-5",
+              className: "flex items-center gap-5",
               children: [
                 g.jsxs("div", {
-                  className: "relative flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 font-bold text-white shadow-xl shadow-indigo-500/30 text-2xl sm:text-3xl border border-white/20",
+                  className: "relative flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white font-extrabold text-2xl sm:text-3xl shadow-lg shadow-indigo-500/25",
                   children: [
                     avatarText,
                     g.jsx("span", {
-                      className: "absolute bottom-0 right-0 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-slate-900"
+                      className: "absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs"
                     })
                   ]
                 }),
@@ -741,61 +743,64 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                   className: "space-y-1.5",
                   children: [
                     g.jsxs("div", {
-                      className: "flex flex-wrap items-center gap-2",
+                      className: "flex flex-wrap items-center gap-2.5",
                       children: [
                         g.jsx("h2", {
-                          className: "text-xl sm:text-2xl font-bold tracking-tight text-white",
+                          className: "text-2xl font-bold tracking-tight text-slate-900",
                           children: name
                         }),
                         g.jsx("span", {
-                          className: "rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-xs font-semibold text-indigo-300 border border-indigo-400/30",
+                          className: "inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200/80",
                           children: role
                         }),
                         g.jsx("span", {
-                          className: "rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 border border-emerald-400/30",
+                          className: "inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/80",
                           children: "Verified ✓"
                         })
                       ]
                     }),
-                    g.jsxs("p", {
-                      className: "text-sm text-slate-300 flex items-center gap-2",
+                    g.jsxs("div", {
+                      className: "flex flex-wrap items-center gap-2 text-sm text-slate-600",
                       children: [
-                        g.jsx("span", { children: `@${username}` }),
-                        g.jsx("span", { className: "text-slate-500", children: "•" }),
-                        g.jsx("span", { children: email })
+                        g.jsx("span", { className: "font-semibold text-slate-800", children: `@${username}` }),
+                        g.jsx("span", { className: "text-slate-400", children: "•" }),
+                        g.jsx("span", { className: "text-slate-600", children: email })
                       ]
                     }),
                     g.jsxs("button", {
                       type: "button",
                       onClick: () => handleCopy(userId, setCopiedId),
-                      className: "inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-indigo-300 transition",
-                      title: "Click to copy user ID",
+                      className: "inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 px-2.5 py-1 text-xs font-mono text-slate-700 transition cursor-pointer mt-0.5",
+                      title: "Click to copy User ID",
                       children: [
-                        g.jsx("span", { children: `ID: ${userId}` }),
-                        g.jsx("span", { className: "text-[10px] opacity-70", children: copiedId ? "✓ Copied" : "📋" })
+                        g.jsx("span", { className: "text-slate-500 font-sans text-[11px]", children: "Account ID:" }),
+                        g.jsx("span", { className: "font-bold text-slate-800", children: userId }),
+                        g.jsx("span", { className: "text-[11px] font-sans font-semibold text-indigo-600 ml-1", children: copiedId ? "✓ Copied!" : "📋 Copy" })
                       ]
                     })
                   ]
                 })
               ]
             }),
+
+            // Balance & Plan Quick Stats
             g.jsxs("div", {
-              className: "flex flex-wrap items-center gap-3 sm:gap-4 border-t lg:border-t-0 lg:border-l border-white/10 pt-4 lg:pt-0 lg:pl-6",
+              className: "flex flex-wrap sm:flex-nowrap items-center gap-3.5 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6",
               children: [
                 g.jsxs("div", {
-                  className: "rounded-xl bg-white/5 border border-white/10 px-4 py-3 backdrop-blur-sm min-w-[140px]",
+                  className: "rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 min-w-[160px] flex-1 sm:flex-none shadow-xs",
                   children: [
-                    g.jsx("p", { className: "text-xs font-medium text-slate-400", children: "Wallet Balance" }),
-                    g.jsx("p", { className: "text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5", children: userBalance || "$25.00" }),
-                    g.jsx("span", { className: "text-[10px] text-emerald-400 font-medium", children: "● Active Funds" })
+                    g.jsx("p", { className: "text-xs font-semibold text-slate-500 uppercase tracking-wider", children: "Wallet Balance" }),
+                    g.jsx("p", { className: "text-2xl font-black text-slate-900 tracking-tight mt-1", children: userBalance || "$25.00" }),
+                    g.jsx("p", { className: "text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5", children: "● Active Balance" })
                   ]
                 }),
                 g.jsxs("div", {
-                  className: "rounded-xl bg-white/5 border border-white/10 px-4 py-3 backdrop-blur-sm min-w-[140px]",
+                  className: "rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 min-w-[160px] flex-1 sm:flex-none shadow-xs",
                   children: [
-                    g.jsx("p", { className: "text-xs font-medium text-slate-400", children: "Membership Plan" }),
-                    g.jsx("p", { className: "text-sm sm:text-base font-bold text-indigo-300 mt-1", children: plan }),
-                    g.jsx("span", { className: "text-[10px] text-slate-400", children: "Unlimited Access" })
+                    g.jsx("p", { className: "text-xs font-semibold text-slate-500 uppercase tracking-wider", children: "Membership Plan" }),
+                    g.jsx("p", { className: "text-base font-bold text-indigo-700 tracking-tight mt-1.5 truncate", children: plan }),
+                    g.jsx("p", { className: "text-[11px] text-slate-500 font-medium mt-0.5", children: "Unlimited Access" })
                   ]
                 })
               ]
@@ -804,14 +809,17 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
         })
       }),
 
+      // Balanced 2-Column Grid
       g.jsxs("div", {
-        className: "grid grid-cols-1 lg:grid-cols-12 gap-6",
+        className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
         children: [
+          // LEFT COLUMN: Profile Info + Database Sync
           g.jsxs("div", {
-            className: "lg:col-span-7 space-y-6",
+            className: "space-y-6",
             children: [
-              g.jsxs(dt, {
-                padding: "lg",
+              // Profile Information Card
+              g.jsxs("div", {
+                className: "rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm",
                 children: [
                   g.jsxs("div", {
                     className: "flex items-center justify-between pb-4 border-b border-slate-100 mb-5",
@@ -823,7 +831,7 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                         ]
                       }),
                       g.jsx("span", {
-                        className: "inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 text-sm",
+                        className: "inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-base shadow-xs",
                         children: "👤"
                       })
                     ]
@@ -869,7 +877,7 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                             className: "flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-700 font-medium",
                             children: [
                               g.jsx("span", { children: "🛡️" }),
-                              g.jsx("span", { children: role }),
+                              g.jsx("span", { className: "font-semibold text-slate-900", children: role }),
                               g.jsx("span", { className: "ml-auto text-xs text-slate-400 font-normal", children: "Fixed permission group" })
                             ]
                           })
@@ -890,9 +898,9 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                 ]
               }),
 
-              g.jsxs(dt, {
-                padding: "lg",
-                className: "border-slate-200",
+              // Database & Infrastructure Status Card
+              g.jsxs("div", {
+                className: "rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm",
                 children: [
                   g.jsxs("div", {
                     className: "flex items-center justify-between pb-3 border-b border-slate-100 mb-4",
@@ -913,19 +921,19 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                     className: "grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs",
                     children: [
                       g.jsxs("div", {
-                        className: "rounded-lg border border-slate-100 bg-slate-50/70 p-3 space-y-1",
+                        className: "rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 space-y-1.5",
                         children: [
-                          g.jsx("p", { className: "font-semibold text-slate-700", children: "Database Cluster" }),
-                          g.jsx("p", { className: "text-slate-500 font-mono text-[11px]", children: "Bhavishyaa SMM (PostgreSQL)" }),
-                          g.jsx("p", { className: "text-[10px] text-emerald-600 font-medium", children: "✓ Table: public.users" })
+                          g.jsx("p", { className: "font-bold text-slate-800 text-xs", children: "Database Cluster" }),
+                          g.jsx("p", { className: "text-slate-600 font-mono text-[11px]", children: "Bhavishyaa SMM (PostgreSQL)" }),
+                          g.jsx("p", { className: "text-[11px] text-emerald-600 font-semibold", children: "✓ Table: public.users" })
                         ]
                       }),
                       g.jsxs("div", {
-                        className: "rounded-lg border border-slate-100 bg-slate-50/70 p-3 space-y-1",
+                        className: "rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 space-y-1.5",
                         children: [
-                          g.jsx("p", { className: "font-semibold text-slate-700", children: "Backend Service" }),
-                          g.jsx("p", { className: "text-slate-500 font-mono text-[11px] truncate", children: "truesmm-backend-twfq.onrender.com" }),
-                          g.jsx("p", { className: "text-[10px] text-indigo-600 font-medium", children: "✓ Node.js 24/7 Engine Active" })
+                          g.jsx("p", { className: "font-bold text-slate-800 text-xs", children: "Backend Service" }),
+                          g.jsx("p", { className: "text-slate-600 font-mono text-[11px] truncate", children: "truesmm-backend-twfq.onrender.com" }),
+                          g.jsx("p", { className: "text-[11px] text-indigo-600 font-semibold", children: "✓ Node.js 24/7 Engine Active" })
                         ]
                       })
                     ]
@@ -935,15 +943,16 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
             ]
           }),
 
+          // RIGHT COLUMN: License Key + Password Change + Session Token
           g.jsxs("div", {
-            className: "lg:col-span-5 space-y-6",
+            className: "space-y-6",
             children: [
-              g.jsxs(dt, {
-                padding: "lg",
-                className: "border-indigo-100 bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/20",
+              // License Key Card
+              g.jsxs("div", {
+                className: "rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm",
                 children: [
                   g.jsxs("div", {
-                    className: "flex items-center justify-between pb-3 border-b border-indigo-100/80 mb-4",
+                    className: "flex items-center justify-between pb-3 border-b border-slate-100 mb-4",
                     children: [
                       g.jsxs("div", {
                         children: [
@@ -952,37 +961,37 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                         ]
                       }),
                       g.jsx("span", {
-                        className: "flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 text-sm",
+                        className: "flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 text-base shadow-xs",
                         children: "🔑"
                       })
                     ]
                   }),
 
                   g.jsxs("div", {
-                    className: "space-y-3",
+                    className: "space-y-3.5",
                     children: [
                       g.jsxs("div", {
-                        className: "rounded-lg border border-slate-800 bg-slate-950 p-3 flex items-center justify-between text-white shadow-inner",
+                        className: "rounded-xl border border-slate-800 bg-slate-900 p-3.5 flex items-center justify-between shadow-sm",
                         children: [
                           g.jsx("code", {
-                            className: "font-mono text-xs sm:text-sm text-indigo-300 tracking-wider select-all",
+                            className: "font-mono text-sm sm:text-base font-bold text-indigo-300 tracking-wider select-all",
                             children: licenseKey
                           }),
                           g.jsx("button", {
                             type: "button",
                             onClick: () => handleCopy(licenseKey, setCopiedKey),
-                            className: "ml-2 shrink-0 rounded-md bg-indigo-600/80 hover:bg-indigo-600 px-2 py-1 text-xs font-semibold text-white transition",
-                            children: copiedKey ? "Copied! ✓" : "Copy"
+                            className: "ml-3 shrink-0 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white transition shadow-xs cursor-pointer",
+                            children: copiedKey ? "Copied! ✓" : "Copy Key"
                           })
                         ]
                       }),
                       g.jsxs("div", {
-                        className: "space-y-1 text-xs text-slate-600 pt-1",
+                        className: "space-y-1.5 text-xs text-slate-600 pt-1",
                         children: [
-                          g.jsx("div", { className: "flex items-center gap-1.5", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ 24/7 Background Scheduler Engine" }) }),
-                          g.jsx("div", { className: "flex items-center gap-1.5", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ Multi-Spike & S-Curve Organic Pacing" }) }),
-                          g.jsx("div", { className: "flex items-center gap-1.5", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ Real-Time PostgreSQL Synchronization" }) }),
-                          g.jsx("div", { className: "flex items-center gap-1.5", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ 2-Hour Lead Time Order Reminders" }) })
+                          g.jsx("div", { className: "flex items-center gap-2", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ 24/7 Background Scheduler Engine" }) }),
+                          g.jsx("div", { className: "flex items-center gap-2", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ Multi-Spike & S-Curve Organic Pacing" }) }),
+                          g.jsx("div", { className: "flex items-center gap-2", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ Real-Time PostgreSQL Synchronization" }) }),
+                          g.jsx("div", { className: "flex items-center gap-2", children: g.jsx("span", { className: "text-emerald-600 font-bold", children: "✓ 2-Hour Lead Time Order Reminders" }) })
                         ]
                       })
                     ]
@@ -990,8 +999,9 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                 ]
               }),
 
-              g.jsxs(dt, {
-                padding: "lg",
+              // Change Password Card
+              g.jsxs("div", {
+                className: "rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm",
                 children: [
                   g.jsxs("div", {
                     className: "flex items-center justify-between pb-3 border-b border-slate-100 mb-4",
@@ -1003,7 +1013,7 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                         ]
                       }),
                       g.jsx("span", {
-                        className: "flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600 text-sm",
+                        className: "flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 text-base shadow-xs",
                         children: "🔒"
                       })
                     ]
@@ -1014,14 +1024,14 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
 
                   g.jsxs("form", {
                     onSubmit: handleChangePassword,
-                    className: "space-y-3",
+                    className: "space-y-3.5",
                     children: [
                       g.jsx(Jt, {
                         label: "New Password",
                         type: "password",
                         value: newPassword,
                         onChange: e => setNewPassword(e.target.value),
-                        placeholder: "Min 6 characters",
+                        placeholder: "Enter new password (min 6 characters)",
                         required: true
                       }),
                       g.jsx(Jt, {
@@ -1047,34 +1057,34 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
                 ]
               }),
 
-              g.jsxs(dt, {
-                padding: "md",
-                className: "border-slate-200 bg-slate-50/50",
+              // Session Token Card
+              g.jsxs("div", {
+                className: "rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 shadow-xs",
                 children: [
                   g.jsxs("div", {
                     className: "flex items-center justify-between mb-2",
                     children: [
-                      g.jsx("h4", { className: "text-xs font-bold text-slate-800 uppercase tracking-wider", children: "Session Token" }),
+                      g.jsx("h4", { className: "text-xs font-bold text-slate-700 uppercase tracking-wider", children: "API Session Token" }),
                       g.jsx("button", {
                         type: "button",
                         onClick: () => setShowToken(!showToken),
-                        className: "text-[11px] font-semibold text-indigo-600 hover:text-indigo-700",
+                        className: "text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer",
                         children: showToken ? "Hide" : "Show"
                       })
                     ]
                   }),
                   g.jsxs("div", {
-                    className: "flex items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5",
+                    className: "flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-xs",
                     children: [
                       g.jsx("code", {
-                        className: "text-[11px] font-mono text-slate-600 truncate mr-2",
-                        children: showToken ? token : "••••••••••••••••••••••••••••••"
+                        className: "text-xs font-mono text-slate-700 truncate mr-2 select-all",
+                        children: showToken ? token : "••••••••••••••••••••••••••••••••••••"
                       }),
                       g.jsx("button", {
                         type: "button",
                         onClick: () => handleCopy(token, setCopiedToken),
-                        className: "text-xs text-slate-500 hover:text-indigo-600 font-medium shrink-0",
-                        children: copiedToken ? "✓" : "Copy"
+                        className: "text-xs text-slate-600 hover:text-indigo-600 font-semibold shrink-0 cursor-pointer transition",
+                        children: copiedToken ? "✓ Copied" : "Copy"
                       })
                     ]
                   })
@@ -1087,6 +1097,7 @@ function UserProfilePage({ userBalance, setUserBalance, onNavigateToPage, onOpen
     ]
   });
 }
+
 
 function xse(){const [userBalance, setUserBalance] = _.useState(() => { try { const s = localStorage.getItem("truesmm-auth-session"); if (s) { const p = JSON.parse(s); if (p && p.balance) return String(p.balance); } } catch {} return "$1,450.00"; }), [showDepositModal, setShowDepositModal] = _.useState(!1), [e,t]=_.useState(()=>{const I=localStorage.getItem("dev-smm-active-page");return I==="dashboard"||I==="new-order"||I==="orders"||I==="apis"||I==="bundles"||I==="profile"?I:"new-order"}),[n,r]=_.useState(!1),[i,s]=_.useState(""),[l,c]=_.useState(()=>HN(Ll("dev-smm-orders",[]))),[d,f]=_.useState(()=>yse(Ll("dev-smm-apis",[]))),[h,p]=_.useState(()=>bse(Ll("dev-smm-bundles",[]))),[v,b]=_.useState(()=>Ll("dev-smm-active-ratios",td)),[w,S]=_.useState(()=>Ll("dev-smm-ratio-presets",[])),[A,j]=_.useState(null),[k,E]=_.useState(null),[O,P]=_.useState(null),C=_.useRef(!1),M=_.useRef(0),R=_.useCallback(I=>{t(I),r(!1),localStorage.setItem("dev-smm-active-page",I)},[]),q=_.useCallback(I=>{typeof I=="function"?c(D=>{const Z=I(D);return localStorage.setItem("dev-smm-orders",JSON.stringify(Z)),Z}):(c(I),localStorage.setItem("dev-smm-orders",JSON.stringify(I)))},[]),V=_.useCallback(I=>{f(I),localStorage.setItem("dev-smm-apis",JSON.stringify(I)),fetch(`${Nd.replace(/\/$/,"")}/api/user/config`,{method:"POST",headers:getAuthHeaders(),body:JSON.stringify({apis:I})}).catch(console.warn)},[]),B=_.useCallback(I=>{p(I),localStorage.setItem("dev-smm-bundles",JSON.stringify(I)),fetch(`${Nd.replace(/\/$/,"")}/api/user/config`,{method:"POST",headers:getAuthHeaders(),body:JSON.stringify({bundles:I})}).catch(console.warn)},[]),L=_.useCallback(I=>{b(I),localStorage.setItem("dev-smm-active-ratios",JSON.stringify(I)),fetch(`${Nd.replace(/\/$/,"")}/api/user/config`,{method:"POST",headers:getAuthHeaders(),body:JSON.stringify({activeRatios:I})}).catch(console.warn)},[]),ee=_.useCallback(I=>{S(I),localStorage.setItem("dev-smm-ratio-presets",JSON.stringify(I)),fetch(`${Nd.replace(/\/$/,"")}/api/user/config`,{method:"POST",headers:getAuthHeaders(),body:JSON.stringify({ratioPresets:I})}).catch(console.warn)},[]),re=_.useCallback(async(I=!1)=>{if(C.current)return;const D=Date.now(),Z=D-M.current;if(!(!I&&Z<1e4)){C.current=!0,M.current=D;try{try{const t=getAuthHeaders(),n=await fetch(`${Nd.replace(/\/$/,"")}/api/orders`,{headers:t});if(n.ok){const r=await n.json();if(r.success&&Array.isArray(r.orders)){c(HN(r.orders)),localStorage.setItem("dev-smm-orders",JSON.stringify(r.orders));return}}}catch(t){}const $=HN(Ll("dev-smm-orders",[])).filter(te=>te.schedulerOrderId&&te.status!=="cancelled"&&te.status!=="failed");if($.length===0)return;const K=[];for(const te of $)try{const ie=await IV(te.schedulerOrderId),W=ie.runs.map(fe=>{switch(fe.status){case"completed":return"completed";case"cancelled":return"cancelled";case"skipped":return"skipped";case"cancelling":return"cancelling";case"executing":return"executing";case"failed":return"failed";default:return"pending"}}),de=ie.runs.map(fe=>fe.skipReason||fe.error||""),runReasonsList=ie.runs.map(fe=>fe.skipReason||""),me=W.filter(fe=>fe==="completed").length;let Ae=te.status;switch(ie.status){case"completed":Ae="completed";break;case"cancelled":Ae="cancelled";break;case"failed":Ae="failed";break;case"paused":Ae="paused";break;case"running":case"processing":Ae="running";break;case"pending":Ae="running";break;default:Ae=te.status}K.push({orderId:te.id,data:{status:Ae,completedRuns:me,runStatuses:W,runErrors:de,runReasons:runReasonsList,backendRuns:ie.runs,scheduledEndTime:ie.scheduledEndTime,expiryReminderStatus:ie.expiryReminder?.status||te.expiryReminderStatus,isExpiringSoon:ie.isExpiringSoon,lastUpdatedAt:new Date().toISOString()}})}catch(ie){
   if (te.status === "running") {
