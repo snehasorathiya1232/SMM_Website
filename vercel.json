@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://truesmm-backend.onrender.com/api/$1"
+      "destination": "https://truesmm-backend-twfq.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

@@ -1568,7 +1568,7 @@ server.listen(PORT, () => {
 // Render free tier servers enter sleep mode after 15 minutes of inactivity.
 // This background pinger sends a lightweight heartbeat every 9 minutes to eliminate the 50+ sec cold-start delay.
 function startRenderKeepAlive() {
-  const targetUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL || 'https://truesmm-backend.onrender.com';
+  const targetUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL || 'https://truesmm-backend-twfq.onrender.com';
   const pingIntervalMs = 9 * 60 * 1000; // 9 minutes
 
   console.info(`[KeepAlive] Render free tier anti-sleep daemon active targeting: ${targetUrl} (every 9m)`);
