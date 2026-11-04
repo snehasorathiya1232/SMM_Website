@@ -1060,6 +1060,80 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // User Profile Details & Updates (/api/user/profile)
+    if (pathname === '/api/user/profile') {
+      if (req.method === 'GET') {
+        const u = dbManager.localDb.users[user.id] || user;
+        return sendJSON(200, {
+          success: true,
+          user: {
+            id: u.id,
+            name: u.name || user.name || 'Creator Pro',
+            username: u.username || user.username || (u.email ? u.email.split('@')[0] : 'creator'),
+            email: u.email || user.email,
+            role: u.role || user.role || 'Creator Pro',
+            balance: typeof u.balance === 'number' ? `$${u.balance.toFixed(2)}` : (u.balance || '$25.00'),
+            plan: u.plan || 'Starter Pacing Pro',
+            avatar: (u.name || user.name || 'CR').slice(0, 2).toUpperCase()
+          }
+        });
+      }
+      if (req.method === 'POST') {
+        const body = await readBody();
+        const updatedName = body.name ? String(body.name).trim() : undefined;
+        const updatedUsername = body.username ? String(body.username).trim() : undefined;
+        const newPassword = body.newPassword ? String(body.newPassword) : undefined;
+
+        if (!dbManager.localDb.users) dbManager.localDb.users = {};
+        if (!dbManager.localDb.users[user.id]) {
+          dbManager.localDb.users[user.id] = { ...user };
+        }
+        const targetUser = dbManager.localDb.users[user.id];
+
+        if (updatedName) targetUser.name = updatedName;
+        if (updatedUsername) targetUser.username = updatedUsername;
+        if (newPassword) {
+          targetUser.password = newPassword;
+          targetUser.passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
+        }
+        dbManager.saveLocalDB();
+
+        // Sync update to Supabase PostgreSQL
+        if (dbManager.supabaseClient) {
+          try {
+            const updateRow = {};
+            if (updatedName) updateRow.name = updatedName;
+            if (updatedUsername) updateRow.username = updatedUsername;
+            if (newPassword) {
+              updateRow.password = newPassword;
+              updateRow.password_hash = targetUser.passwordHash;
+            }
+            updateRow.updated_at = new Date().toISOString();
+            await dbManager.supabaseClient.from('users').update(updateRow).eq('id', user.id);
+          } catch (e) {
+            console.warn('[DB] Supabase user update notice:', e.message);
+          }
+        }
+
+        dbManager.logAudit(user.id, null, 'profile_updated', { name: updatedName, username: updatedUsername });
+
+        return sendJSON(200, {
+          success: true,
+          message: 'Profile updated successfully',
+          user: {
+            id: targetUser.id,
+            name: targetUser.name,
+            username: targetUser.username,
+            email: targetUser.email,
+            role: targetUser.role,
+            balance: typeof targetUser.balance === 'number' ? `$${targetUser.balance.toFixed(2)}` : targetUser.balance,
+            plan: targetUser.plan || 'Starter Pacing Pro',
+            avatar: (targetUser.name || 'CR').slice(0, 2).toUpperCase()
+          }
+        });
+      }
+    }
+
     // =========================================================================
     // WALLET, BILLING & PAYMENT GATEWAYS (Stripe, Cryptomus, PayPal, UPI)
     // =========================================================================
