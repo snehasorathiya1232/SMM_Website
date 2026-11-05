@@ -13,6 +13,7 @@
 
 import http from 'http';
 import crypto from 'crypto';
+import dns from 'dns';
 import { DatabaseManager } from './src/db.js';
 import {
   validateOutboundUrl,
@@ -45,6 +46,103 @@ const notificationService = new NotificationService({
 
 // Global execution lock per queue (Rule 1: Concurrency clamp = 1)
 const activeQueueLocks = new Set();
+
+// Comprehensive Disposable & Temporary Email Domain Blocklist
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com', 'tempmail.com', 'temp-mail.org', 'guerrillamail.com', 'guerrillamail.net',
+  '10minutemail.com', '10minutemail.net', 'yopmail.com', 'yopmail.net', 'trashmail.com',
+  'trashmail.net', 'trashmail.me', 'sharklasers.com', 'dispostable.com', 'getairmail.com',
+  'throwawaymail.com', 'nada.ltd', 'mohmal.com', 'generator.email', 'inboxkitten.com',
+  'maildrop.cc', 'crazymailing.com', 'emailondeck.com', 'burnermail.io', 'dropmail.me',
+  'tempail.com', 'mytemp.email', 'disposablemail.com', 'mintemail.com', 'fakemailgenerator.com',
+  'armyspy.com', 'cuvox.de', 'dayrep.com', 'fleckens.hu', 'gustr.com', 'jourrapide.com',
+  'rhyta.com', 'superrito.com', 'teleworm.us', 'tinemail.com', 'fastmail.fm', 'mytempemail.com',
+  'trash-mail.com', 'spambog.com', 'mailcatch.com', 'throwawayemailaddress.com', 'fakeinbox.com',
+  'discard.email', 'spambog.de', 'spambog.ru', 'tempinbox.com', 'tempemail.co',
+  'tempmailaddress.com', 'fakeemail.net', 'emailfake.com'
+]);
+
+// Known Dummy, Test, and Placeholder Domains
+const DUMMY_DOMAINS = new Set([
+  'example.com', 'example.org', 'example.net', 'test.com', 'testing.com',
+  'fake.com', 'dummy.com', 'asdf.com', 'qwerty.com', 'invalid.com',
+  'none.com', 'sample.com', 'domain.com', 'foo.com', 'bar.com',
+  'xyz.com', 'abc.com', 'nowhere.com', 'herjgrj.com', 'random.com'
+]);
+
+// Dummy / Placeholder Usernames
+const DUMMY_USERNAMES = new Set([
+  'test', 'testing', 'dummy', 'fake', 'asdf', 'qwerty', 'nobody', 'sample',
+  '123', '1234', '12345', 'user', 'temp', 'null', 'undefined', 'fakeemail', 'dummyemail'
+]);
+
+/**
+ * Validates whether an email address is real, deliverable, and structurally genuine.
+ * Checks RFC compliance, TLD, disposable providers, dummy domains, and active DNS MX records.
+ */
+async function verifyEmailIsReal(rawEmail) {
+  if (!rawEmail || typeof rawEmail !== 'string') {
+    return { valid: false, error: 'A valid email address is required.' };
+  }
+  const email = rawEmail.trim().toLowerCase();
+  if (email.length < 6 || email.length > 254) {
+    return { valid: false, error: 'Email address length is invalid (must be between 6 and 254 characters).' };
+  }
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!emailRegex.test(email) || email.includes('..')) {
+    return { valid: false, error: 'Please enter a properly formatted email address (e.g. name@domain.com).' };
+  }
+  const parts = email.split('@');
+  if (parts.length !== 2) {
+    return { valid: false, error: 'Please enter a valid email address.' };
+  }
+  const [localPart, domain] = parts;
+  if (localPart.length > 64 || localPart.startsWith('.') || localPart.endsWith('.')) {
+    return { valid: false, error: 'The username portion of the email address is invalid.' };
+  }
+  if (DUMMY_USERNAMES.has(localPart)) {
+    return { valid: false, error: `Placeholder or test email addresses ('${localPart}@...') are not permitted. Please use your real email.` };
+  }
+  const domainParts = domain.split('.');
+  if (domainParts.length < 2) {
+    return { valid: false, error: 'Email domain must include a valid top-level domain extension (e.g. .com, .in, .org).' };
+  }
+  const tld = domainParts[domainParts.length - 1];
+  if (!/^[a-zA-Z]{2,24}$/.test(tld)) {
+    return { valid: false, error: `The email top-level extension (.${tld}) is invalid.` };
+  }
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain) || domain.startsWith('temp-mail') || domain.startsWith('tempmail') || domain.startsWith('10minute') || domain.startsWith('disposable')) {
+    return { valid: false, error: 'Disposable and temporary email addresses are not allowed. Please enter a real, permanent business or personal email address.' };
+  }
+  if (DUMMY_DOMAINS.has(domain)) {
+    return { valid: false, error: `Dummy, placeholder, or test domains (@${domain}) are not permitted. Please provide a real email address.` };
+  }
+
+  // Check for random consonant clusters with no vowels in domain (e.g., herjgrj.com)
+  const domainNameWithoutTld = domainParts.slice(0, -1).join('');
+  if (!/[aeiouy0-9]/i.test(domainNameWithoutTld) || domainNameWithoutTld.length < 3) {
+    return { valid: false, error: `The email domain '@${domain}' appears invalid. Please provide a real email address.` };
+  }
+
+  // Active DNS MX Record Check (resolves mail server presence on the internet)
+  try {
+    const mxRecords = await dns.promises.resolveMx(domain);
+    if (!mxRecords || mxRecords.length === 0) {
+      try {
+        const aRecords = await dns.promises.resolve4(domain);
+        if (!aRecords || aRecords.length === 0) {
+          return { valid: false, error: `The domain '@${domain}' has no active mail servers and cannot receive emails. Please use a real email address.` };
+        }
+      } catch (aErr) {
+        return { valid: false, error: `The domain '@${domain}' has no active mail servers and cannot receive emails. Please use a real email address.` };
+      }
+    }
+  } catch (dnsErr) {
+    return { valid: false, error: `The domain '@${domain}' does not exist or has no active mail servers. Please use a real email address.` };
+  }
+
+  return { valid: true, email };
+}
 
 // In-Memory Registration OTP Store: email -> { otp, expiresAt, attempts, pendingUser, lastSentAt }
 const registrationOtpStore = new Map();
@@ -852,14 +950,17 @@ const server = http.createServer(async (req, res) => {
       const username = String(body.username || '').trim();
       const role = body.role || 'user';
 
-      if (!email || !email.includes('@')) {
-        return sendJSON(400, { error: 'A valid email address is required.' });
-      }
       if (!name) {
         return sendJSON(400, { error: 'Full name is required.' });
       }
       if (!password || password.length < 6) {
         return sendJSON(400, { error: 'Password must be at least 6 characters long.' });
+      }
+
+      // Strict Real Email Verification (format, disposable blocklist, dummy domains & DNS MX record)
+      const emailVerification = await verifyEmailIsReal(email);
+      if (!emailVerification.valid) {
+        return sendJSON(400, { error: emailVerification.error });
       }
 
       // Check if user already exists locally
@@ -900,12 +1001,14 @@ const server = http.createServer(async (req, res) => {
 
       await dispatchEmailOtp(email, otp, name);
 
+      const isTestRunner = req.headers['x-bhavishyaa-test-suite'] === '1' && process.env.NODE_ENV !== 'production';
+
       return sendJSON(200, {
         success: true,
         message: `6-digit verification code sent to ${email}.`,
         email,
         expiresInSeconds: 600,
-        devOtp: otp
+        ...(isTestRunner ? { devOtp: otp } : {})
       });
     }
 
@@ -999,8 +1102,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody();
       const email = String(body.email || '').trim().toLowerCase();
 
-      if (!email || !email.includes('@')) {
-        return sendJSON(400, { error: 'A valid email address is required.' });
+      const emailVerification = await verifyEmailIsReal(email);
+      if (!emailVerification.valid) {
+        return sendJSON(400, { error: emailVerification.error });
       }
 
       const existingRecord = registrationOtpStore.get(email);
@@ -1021,12 +1125,14 @@ const server = http.createServer(async (req, res) => {
 
       await dispatchEmailOtp(email, otp, pendingUser?.name || 'User');
 
+      const isTestRunner = req.headers['x-bhavishyaa-test-suite'] === '1' && process.env.NODE_ENV !== 'production';
+
       return sendJSON(200, {
         success: true,
         message: `A new 6-digit verification code was sent to ${email}.`,
         email,
         expiresInSeconds: 600,
-        devOtp: otp
+        ...(isTestRunner ? { devOtp: otp } : {})
       });
     }
 
@@ -1038,9 +1144,11 @@ const server = http.createServer(async (req, res) => {
       const name = String(body.name || '').trim();
       const username = String(body.username || '').trim();
       const role = body.role || 'user';
+      const otp = String(body.otp || '').trim();
 
-      if (!email || !email.includes('@')) {
-        return sendJSON(400, { error: 'A valid email address is required.' });
+      const emailVerification = await verifyEmailIsReal(email);
+      if (!emailVerification.valid) {
+        return sendJSON(400, { error: emailVerification.error });
       }
       if (!password || password.length < 6) {
         return sendJSON(400, { error: 'Password must be at least 6 characters long.' });
@@ -1048,6 +1156,22 @@ const server = http.createServer(async (req, res) => {
       if (!name) {
         return sendJSON(400, { error: 'Full name is required.' });
       }
+
+      // Enforce email verification OTP
+      if (!otp) {
+        return sendJSON(400, {
+          error: 'Email verification code is required. Please verify your email via /api/auth/send-otp.'
+        });
+      }
+
+      const record = registrationOtpStore.get(email);
+      if (!record || record.otp !== otp || Date.now() > record.expiresAt) {
+        return sendJSON(400, {
+          error: 'Invalid or expired email verification code. Please request a new code.'
+        });
+      }
+
+      registrationOtpStore.delete(email);
 
       if (!dbManager.localDb.users) dbManager.localDb.users = {};
 
@@ -1072,6 +1196,8 @@ const server = http.createServer(async (req, res) => {
         balance: 25.00,
         plan: role === 'agency' || role === 'Agency Lead' ? 'Agency Lead' : 'Starter Pacing Pro',
         token,
+        isVerified: true,
+        emailVerifiedAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       };
 
@@ -1090,7 +1216,8 @@ const server = http.createServer(async (req, res) => {
           role: newUser.role === 'agency' ? 'Agency Lead' : 'Creator Pro',
           balance: `$${newUser.balance.toFixed(2)}`,
           plan: newUser.plan,
-          avatar: newUser.name.slice(0, 2).toUpperCase()
+          avatar: newUser.name.slice(0, 2).toUpperCase(),
+          isVerified: true
         },
         token: newUser.token,
         licenseKey: `BHAVISHYAA-NEW-${Math.floor(1000 + Math.random() * 9000)}`
