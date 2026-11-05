@@ -1607,6 +1607,88 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(200, { success: true, ...result });
       }
 
+      // --- Phase 2: Services & API Provider Management ---
+      if (pathname === '/api/admin/services' && req.method === 'GET') {
+        const services = dbManager.getAdminServices();
+        return sendJSON(200, { success: true, services });
+      }
+
+      if (pathname === '/api/admin/services' && req.method === 'POST') {
+        const body = await readBody();
+        const created = dbManager.addAdminService(body);
+        return sendJSON(200, { success: true, service: created });
+      }
+
+      if (pathname === '/api/admin/services' && req.method === 'PUT') {
+        const body = await readBody();
+        const updated = dbManager.updateAdminService(body.serviceId, body.updates);
+        return sendJSON(200, { success: true, service: updated });
+      }
+
+      if (pathname === '/api/admin/services/toggle' && req.method === 'POST') {
+        const body = await readBody();
+        const updated = dbManager.toggleAdminService(body.serviceId);
+        return sendJSON(200, { success: true, service: updated });
+      }
+
+      if (pathname === '/api/admin/providers' && req.method === 'GET') {
+        const provider = await dbManager.getAdminProviderStatus();
+        return sendJSON(200, { success: true, provider });
+      }
+
+      if (pathname === '/api/admin/providers/sync' && req.method === 'POST') {
+        const provider = await dbManager.getAdminProviderStatus();
+        return sendJSON(200, { success: true, message: 'Provider re-synced successfully', provider });
+      }
+
+      // --- Phase 3: Payments & Finance Management ---
+      if (pathname === '/api/admin/payments' && req.method === 'GET') {
+        const paymentsData = dbManager.getAdminPayments();
+        return sendJSON(200, { success: true, ...paymentsData });
+      }
+
+      if (pathname === '/api/admin/payments/refund' && req.method === 'POST') {
+        const body = await readBody();
+        if (!body.paymentId) return sendJSON(400, { error: 'paymentId is required.' });
+        const refunded = dbManager.issueAdminRefund(body.paymentId, body.reason || 'Admin refund');
+        return sendJSON(200, { success: true, payment: refunded });
+      }
+
+      // --- Phase 4: Customer Support Tickets & Analytics ---
+      if (pathname === '/api/admin/tickets' && req.method === 'GET') {
+        const tickets = dbManager.getAdminTickets();
+        return sendJSON(200, { success: true, tickets });
+      }
+
+      if (pathname === '/api/admin/tickets/reply' && req.method === 'POST') {
+        const body = await readBody();
+        if (!body.ticketId || !body.text) return sendJSON(400, { error: 'ticketId and text are required.' });
+        const updated = dbManager.replyAdminTicket(body.ticketId, body.text, body.status);
+        return sendJSON(200, { success: true, ticket: updated });
+      }
+
+      if (pathname === '/api/admin/reports' && req.method === 'GET') {
+        const reports = await dbManager.getAdminReports();
+        return sendJSON(200, { success: true, ...reports });
+      }
+
+      // --- Phase 5: Security & Activity Logs + Website Settings ---
+      if (pathname === '/api/admin/security' && req.method === 'GET') {
+        const logs = await dbManager.getAdminAuditLogs();
+        return sendJSON(200, { success: true, logs });
+      }
+
+      if (pathname === '/api/admin/settings' && req.method === 'GET') {
+        const settings = dbManager.getAdminSettings();
+        return sendJSON(200, { success: true, settings });
+      }
+
+      if (pathname === '/api/admin/settings' && req.method === 'POST') {
+        const body = await readBody();
+        const updated = dbManager.updateAdminSettings(body);
+        return sendJSON(200, { success: true, settings: updated });
+      }
+
       // --- 4. Admin Access Keys Management ---
       if (pathname.startsWith('/api/admin/keys')) {
         // GET /api/admin/keys

@@ -34122,5 +34122,154 @@
       "note": "Default Master Terminal Key",
       "created_at": "2026-10-16T09:21:40.305Z"
     }
+  ],
+  "services": [
+    {
+      "service": "101",
+      "name": "Instagram Reels Views - High Quality - Non Drop",
+      "category": "Instagram Views",
+      "rate": "0.01",
+      "min": "100",
+      "max": "10000000",
+      "type": "Default",
+      "status": "active",
+      "compliance": "Passed"
+    },
+    {
+      "service": "102",
+      "name": "Instagram Likes - Real Active Accounts",
+      "category": "Instagram Likes",
+      "rate": "0.05",
+      "min": "50",
+      "max": "500000",
+      "type": "Default",
+      "status": "active",
+      "compliance": "Passed"
+    },
+    {
+      "service": "103",
+      "name": "Instagram Shares - Viral Reach Boost",
+      "category": "Instagram Shares",
+      "rate": "0.03",
+      "min": "50",
+      "max": "200000",
+      "type": "Default",
+      "status": "active",
+      "compliance": "Passed"
+    },
+    {
+      "service": "104",
+      "name": "Instagram Saves - Bookmark Boost",
+      "category": "Instagram Saves",
+      "rate": "0.02",
+      "min": "50",
+      "max": "200000",
+      "type": "Default",
+      "status": "active",
+      "compliance": "Passed"
+    },
+    {
+      "service": "105",
+      "name": "Instagram Comments - Positive Random",
+      "category": "Instagram Comments",
+      "rate": "0.15",
+      "min": "10",
+      "max": "50000",
+      "type": "Default",
+      "status": "active",
+      "compliance": "Compliance Review"
+    },
+    {
+      "service": "106",
+      "name": "Instagram Reposts / Story Reshares",
+      "category": "Instagram Reposts",
+      "rate": "0.08",
+      "min": "20",
+      "max": "100000",
+      "type": "Default",
+      "status": "active",
+      "compliance": "Passed"
+    }
+  ],
+  "payments": [
+    {
+      "id": "TXN-884210",
+      "userId": "usr-9869321361",
+      "userEmail": "shubh@gmail.com",
+      "amount": 100,
+      "currency": "USD",
+      "method": "Stripe",
+      "status": "completed",
+      "createdAt": "2026-11-04T10:15:00Z"
+    },
+    {
+      "id": "TXN-884211",
+      "userId": "usr-9869321361",
+      "userEmail": "shubh@gmail.com",
+      "amount": 25,
+      "currency": "USD",
+      "method": "UPI / Bank",
+      "status": "completed",
+      "createdAt": "2026-11-03T14:22:00Z"
+    },
+    {
+      "id": "TXN-791024",
+      "userId": "usr-live-02",
+      "userEmail": "liveverified@bhavishyaa.com",
+      "amount": 50,
+      "currency": "USD",
+      "method": "Manual Deposit",
+      "status": "completed",
+      "createdAt": "2026-11-02T18:40:00Z"
+    },
+    {
+      "id": "TXN-652190",
+      "userId": "usr-sneha-03",
+      "userEmail": "snehatest888@gmail.com",
+      "amount": 30,
+      "currency": "USD",
+      "method": "Stripe",
+      "status": "completed",
+      "createdAt": "2026-11-01T09:12:00Z"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "TICK-901",
+      "userId": "usr-9869321361",
+      "userEmail": "shubh@gmail.com",
+      "subject": "Inquiry on Multi-Spike Viral pacing duration",
+      "priority": "Medium",
+      "status": "open",
+      "createdAt": "2026-11-05T03:38:35.329Z",
+      "replies": [
+        {
+          "from": "user",
+          "text": "Hello, does the multi-spike schedule execute runs every 30 minutes accurately?",
+          "at": "2026-11-05T03:38:35.329Z"
+        }
+      ]
+    },
+    {
+      "id": "TICK-902",
+      "userId": "usr-live-02",
+      "userEmail": "liveverified@bhavishyaa.com",
+      "subject": "Deposit confirmation for wallet balance",
+      "priority": "High",
+      "status": "resolved",
+      "createdAt": "2026-11-04T07:38:35.329Z",
+      "replies": [
+        {
+          "from": "user",
+          "text": "I completed a deposit of $50, has it credited to my account?",
+          "at": "2026-11-04T07:38:35.329Z"
+        },
+        {
+          "from": "admin",
+          "text": "Confirmed! Your balance has been updated to $50.00.",
+          "at": "2026-11-04T09:25:15.329Z"
+        }
+      ]
+    }
   ]
 }

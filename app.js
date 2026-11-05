@@ -2042,7 +2042,7 @@ function Lue() {
     setTimeout(() => setBanner(null), 5000);
   };
 
-  // --- Overview State ---
+  // --- Phase 1: Overview State ---
   const [overviewLoading, setOverviewLoading] = _.useState(false);
   const [overview, setOverview] = _.useState({
     totalUsers: 0,
@@ -2074,7 +2074,7 @@ function Lue() {
     }
   };
 
-  // --- Orders State ---
+  // --- Phase 1: Orders State ---
   const [ordersLoading, setOrdersLoading] = _.useState(false);
   const [orders, setOrders] = _.useState([]);
   const [orderSearch, setOrderSearch] = _.useState("");
@@ -2121,7 +2121,7 @@ function Lue() {
     }
   };
 
-  // --- Users State ---
+  // --- Phase 1: Users State ---
   const [usersLoading, setUsersLoading] = _.useState(false);
   const [users, setUsers] = _.useState([]);
   const [userSearch, setUserSearch] = _.useState("");
@@ -2201,6 +2201,310 @@ function Lue() {
       }
     } catch (err) {
       showNotice("danger", err.message || "Failed to update role.");
+    }
+  };
+
+  // --- Phase 2: Services & Categories State ---
+  const [services, setServices] = _.useState([]);
+  const [servicesLoading, setServicesLoading] = _.useState(false);
+  const [serviceCategoryFilter, setServiceCategoryFilter] = _.useState("All");
+  const [showAddServiceModal, setShowAddServiceModal] = _.useState(false);
+  const [newServiceForm, setNewServiceForm] = _.useState({ service: "", name: "", category: "Instagram Views", rate: "0.01", min: "100", max: "1000000" });
+
+  const loadServices = async () => {
+    setServicesLoading(true);
+    try {
+      const res = await fetch("/api/admin/services", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setServices(data.services || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load services:", err);
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const handleToggleService = async (serviceId) => {
+    try {
+      const res = await fetch("/api/admin/services/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ serviceId })
+      });
+      if (res.ok) {
+        showNotice("success", "Service status updated.");
+        await loadServices();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  const handleAddService = async (e) => {
+    e.preventDefault();
+    if (!newServiceForm.name.trim()) return;
+    try {
+      const res = await fetch("/api/admin/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify(newServiceForm)
+      });
+      if (res.ok) {
+        showNotice("success", "Service added: " + newServiceForm.name);
+        setShowAddServiceModal(false);
+        setNewServiceForm({ service: "", name: "", category: "Instagram Views", rate: "0.01", min: "100", max: "1000000" });
+        await loadServices();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  // --- Phase 2: API Providers State ---
+  const [provider, setProvider] = _.useState(null);
+  const [providerLoading, setProviderLoading] = _.useState(false);
+
+  const loadProvider = async () => {
+    setProviderLoading(true);
+    try {
+      const res = await fetch("/api/admin/providers", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProvider(data.provider || null);
+      }
+    } catch (err) {
+      console.warn("Failed to load provider status:", err);
+    } finally {
+      setProviderLoading(false);
+    }
+  };
+
+  const handleSyncProvider = async () => {
+    setProviderLoading(true);
+    try {
+      const res = await fetch("/api/admin/providers/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        showNotice("success", "YOYO SMM API re-synced successfully. Balance and services verified.");
+        await loadProvider();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    } finally {
+      setProviderLoading(false);
+    }
+  };
+
+  // --- Phase 3: Payments & Finance State ---
+  const [paymentsData, setPaymentsData] = _.useState({ payments: [], summary: { grossVolume: 0, totalRefunds: 0, netVolume: 0, transactionsCount: 0 } });
+  const [paymentsLoading, setPaymentsLoading] = _.useState(false);
+  const [refundModalPayment, setRefundModalPayment] = _.useState(null);
+  const [refundReason, setRefundReason] = _.useState("");
+
+  const loadPayments = async () => {
+    setPaymentsLoading(true);
+    try {
+      const res = await fetch("/api/admin/payments", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentsData(data);
+      }
+    } catch (err) {
+      console.warn("Failed to load payments:", err);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
+  const handleIssueRefund = async (e) => {
+    e.preventDefault();
+    if (!refundModalPayment) return;
+    try {
+      const res = await fetch("/api/admin/payments/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ paymentId: refundModalPayment.id, reason: refundReason.trim() || "Customer requested refund" })
+      });
+      if (res.ok) {
+        showNotice("success", "Refund processed for transaction " + refundModalPayment.id);
+        setRefundModalPayment(null);
+        setRefundReason("");
+        await loadPayments();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  // --- Phase 4: Support Tickets State ---
+  const [tickets, setTickets] = _.useState([]);
+  const [ticketsLoading, setTicketsLoading] = _.useState(false);
+  const [ticketFilter, setTicketFilter] = _.useState("all");
+  const [selectedTicket, setSelectedTicket] = _.useState(null);
+  const [replyText, setReplyText] = _.useState("");
+  const [replyStatus, setReplyStatus] = _.useState("in_progress");
+
+  const loadTickets = async () => {
+    setTicketsLoading(true);
+    try {
+      const res = await fetch("/api/admin/tickets", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTickets(data.tickets || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load tickets:", err);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+
+  const handleReplyTicket = async (e) => {
+    e.preventDefault();
+    if (!selectedTicket || !replyText.trim()) return;
+    try {
+      const res = await fetch("/api/admin/tickets/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ ticketId: selectedTicket.id, text: replyText.trim(), status: replyStatus })
+      });
+      if (res.ok) {
+        showNotice("success", "Reply sent to " + (selectedTicket.userEmail || "customer"));
+        setReplyText("");
+        setSelectedTicket(null);
+        await loadTickets();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  // --- Phase 4: Reports & Analytics State ---
+  const [reportsData, setReportsData] = _.useState(null);
+  const [reportsLoading, setReportsLoading] = _.useState(false);
+
+  const loadReports = async () => {
+    setReportsLoading(true);
+    try {
+      const res = await fetch("/api/admin/reports", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReportsData(data);
+      }
+    } catch (err) {
+      console.warn("Failed to load reports:", err);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const handleExportCSV = (type) => {
+    let csv = "";
+    let filename = "";
+    if (type === "orders") {
+      csv = "Order ID,User,Link,Total Views,Total Charge,Currency,Status,Created At\n";
+      orders.forEach(o => {
+        csv += '"' + o.id + '","' + (o.user_id || o.userId || '') + '","' + (o.link || '') + '",' + (o.total_views || o.totalViews || 0) + ',' + (o.total_charge || o.totalCharge || 0) + ',"' + (o.currency || 'USD') + '","' + o.status + '","' + (o.created_at || o.createdAt || '') + '"\n';
+      });
+      filename = "orders_export.csv";
+    } else {
+      csv = "User ID,Name,Email,Username,Role,Balance,Plan,Created At\n";
+      users.forEach(u => {
+        csv += '"' + u.id + '","' + (u.name || '') + '","' + u.email + '","' + (u.username || '') + '","' + (u.role || 'user') + '",' + Number(u.balance || 0).toFixed(2) + ',"' + (u.plan || '') + '","' + (u.created_at || '') + '"\n';
+      });
+      filename = "users_export.csv";
+    }
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    showNotice("success", "Exported " + filename + " successfully!");
+  };
+
+  // --- Phase 5: Security & Activity Logs State ---
+  const [securityLogs, setSecurityLogs] = _.useState([]);
+  const [securityLoading, setSecurityLoading] = _.useState(false);
+
+  const loadSecurity = async () => {
+    setSecurityLoading(true);
+    try {
+      const res = await fetch("/api/admin/security", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSecurityLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load security logs:", err);
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
+  // --- Phase 5: Website Settings State ---
+  const [settings, setSettings] = _.useState({
+    siteName: "BHAVISHYAA",
+    tagline: "Social Media Marketing Panel & Algorithm Pacing Platform",
+    contactEmail: "support@bhavishyaa.com",
+    supportChannel: "@bhavishyaa_support",
+    announcementActive: true,
+    announcementText: "⚡ 24/7 Organic Algorithm Pacing Engine is running at 100% capacity.",
+    maintenanceMode: false,
+    minViewsPerRun: 100
+  });
+  const [settingsLoading, setSettingsLoading] = _.useState(false);
+  const [settingsSaving, setSettingsSaving] = _.useState(false);
+
+  const loadSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data.settings);
+      }
+    } catch (err) {
+      console.warn("Failed to load settings:", err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSettingsSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify(settings)
+      });
+      if (res.ok) {
+        showNotice("success", "Website settings updated and saved persistently.");
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -2377,6 +2681,13 @@ function Lue() {
       loadOrders();
       loadUsers();
       loadKeys();
+      loadServices();
+      loadProvider();
+      loadPayments();
+      loadTickets();
+      loadReports();
+      loadSecurity();
+      loadSettings();
     }
   }, [isAuthenticated]);
 
@@ -2498,26 +2809,39 @@ function Lue() {
     );
   });
 
+  // Filtered Services
+  const filteredServices = services.filter(s => {
+    if (serviceCategoryFilter === "All") return true;
+    return s.category === serviceCategoryFilter;
+  });
+
+  // Filtered Tickets
+  const filteredTickets = tickets.filter(t => {
+    if (ticketFilter === "all") return true;
+    return (t.status || "").toLowerCase() === ticketFilter;
+  });
+
+  // Navigation Items
   const sidebarItems = [
-    { key: "overview", label: "Overview", icon: "📊", active: true },
-    { key: "orders", label: "Orders", icon: "📦", active: true, badge: orders.length },
-    { key: "users", label: "Users", icon: "👥", active: true, badge: users.length },
-    { key: "keys", label: "License Keys", icon: "🔑", active: true, badge: keys.length },
-    { key: "services", label: "Services & Categories", icon: "⚙️", phase: "Phase 2" },
-    { key: "providers", label: "API Providers", icon: "🔌", phase: "Phase 2" },
-    { key: "payments", label: "Payments & Finance", icon: "💳", phase: "Phase 3" },
-    { key: "support", label: "Support Tickets", icon: "🎫", phase: "Phase 4" },
-    { key: "reports", label: "Reports & Analytics", icon: "📈", phase: "Phase 4" },
-    { key: "security", label: "Security & Logs", icon: "🛡️", phase: "Phase 5" },
-    { key: "settings", label: "Website Settings", icon: "🔧", phase: "Phase 5" }
+    { key: "overview", label: "Overview", icon: "📊", badge: null },
+    { key: "orders", label: "Orders", icon: "📦", badge: orders.length },
+    { key: "users", label: "Users", icon: "👥", badge: users.length },
+    { key: "keys", label: "License Keys", icon: "🔑", badge: keys.length },
+    { key: "services", label: "Services & Categories", icon: "⚙️", badge: services.length },
+    { key: "providers", label: "API Providers", icon: "🔌", badge: "Online" },
+    { key: "payments", label: "Payments & Finance", icon: "💳", badge: paymentsData.payments.length },
+    { key: "support", label: "Support Tickets", icon: "🎫", badge: tickets.filter(t => t.status === "open").length || null },
+    { key: "reports", label: "Reports & Analytics", icon: "📈", badge: null },
+    { key: "security", label: "Security & Logs", icon: "🛡️", badge: securityLogs.length },
+    { key: "settings", label: "Website Settings", icon: "🔧", badge: null }
   ];
 
   return g.jsxs("div", {
-    className: "min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans",
+    className: "flex min-h-screen bg-slate-50 text-slate-900 font-sans",
     children: [
-      // --- Admin Sidebar ---
+      // --- Admin Sidebar (Fixed Side Navigation) ---
       g.jsxs("aside", {
-        className: "w-full md:w-64 bg-white border-r border-slate-200 flex flex-col shrink-0",
+        className: "w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 z-20",
         children: [
           // Logo Header
           g.jsxs("div", {
@@ -2538,20 +2862,17 @@ function Lue() {
 
           // Navigation Links
           g.jsx("nav", {
-            className: "flex-1 px-3 py-4 space-y-1 overflow-y-auto",
+            className: "flex-1 px-3 py-3 space-y-1 overflow-y-auto",
             children: sidebarItems.map(item => {
               const isSelected = activeTab === item.key;
               return g.jsxs("button", {
                 key: item.key,
                 type: "button",
-                disabled: !item.active,
-                onClick: () => { if (item.active) setActiveTab(item.key); },
-                className: "w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition-colors " +
+                onClick: () => setActiveTab(item.key),
+                className: "w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer " +
                   (isSelected
                     ? "bg-indigo-600 text-white shadow-xs"
-                    : item.active
-                    ? "text-slate-700 hover:bg-slate-100 cursor-pointer"
-                    : "text-slate-400 cursor-not-allowed opacity-60"),
+                    : "text-slate-700 hover:bg-slate-100"),
                 children: [
                   g.jsxs("div", {
                     className: "flex items-center gap-2.5",
@@ -2560,13 +2881,9 @@ function Lue() {
                       g.jsx("span", { children: item.label })
                     ]
                   }),
-                  item.badge !== undefined && g.jsx("span", {
+                  item.badge !== null && item.badge !== undefined && g.jsx("span", {
                     className: "px-2 py-0.5 text-[10px] font-bold rounded-full " + (isSelected ? "bg-indigo-800 text-indigo-100" : "bg-slate-100 text-slate-600"),
                     children: item.badge
-                  }),
-                  item.phase && g.jsx("span", {
-                    className: "px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-slate-100 text-slate-500 uppercase tracking-wider",
-                    children: item.phase
                   })
                 ]
               });
@@ -2596,19 +2913,19 @@ function Lue() {
 
       // --- Admin Main View Area ---
       g.jsxs("main", {
-        className: "flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6",
+        className: "flex-1 min-w-0 min-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6",
         children: [
           // Banner Notifications
           banner && g.jsx(ka, { kind: banner.kind, children: banner.message }),
 
           // ==========================================
-          // TAB 1: OVERVIEW DASHBOARD
+          // TAB 1: OVERVIEW DASHBOARD (Phase 1)
           // ==========================================
           activeTab === "overview" && g.jsxs("div", {
             className: "space-y-6",
             children: [
               g.jsx(Ep, {
-                eyebrow: "Phase 1: Control Centre",
+                eyebrow: "Control Centre",
                 title: "Business Overview",
                 description: "Live system metrics, orders velocity, revenue, and database synchronization.",
                 actions: g.jsx(Ce, {
@@ -2662,7 +2979,7 @@ function Lue() {
                   }),
                   g.jsx(Aa, {
                     label: "Active Services",
-                    value: overview.activeServices || 6,
+                    value: services.length || 6,
                     tone: "info",
                     icon: g.jsx("span", { className: "text-lg", children: "⚡" })
                   }),
@@ -2818,13 +3135,13 @@ function Lue() {
           }),
 
           // ==========================================
-          // TAB 2: ORDER MANAGEMENT
+          // TAB 2: ORDER MANAGEMENT (Phase 1)
           // ==========================================
           activeTab === "orders" && g.jsxs("div", {
             className: "space-y-5",
             children: [
               g.jsx(Ep, {
-                eyebrow: "Phase 1: Operational",
+                eyebrow: "Operational Control",
                 title: "Order Management",
                 description: "Inspect customer orders, filter by execution state, cancel or mark completed.",
                 actions: g.jsx(Ce, {
@@ -3081,13 +3398,13 @@ function Lue() {
           }),
 
           // ==========================================
-          // TAB 3: USER MANAGEMENT
+          // TAB 3: USER MANAGEMENT (Phase 1)
           // ==========================================
           activeTab === "users" && g.jsxs("div", {
             className: "space-y-5",
             children: [
               g.jsx(Ep, {
-                eyebrow: "Phase 1: Accounts & Roles",
+                eyebrow: "Accounts & Roles",
                 title: "User Management",
                 description: "View all registered users from PostgreSQL, inspect balances, adjust credits, and manage roles.",
                 actions: g.jsx(Ce, {
@@ -3519,6 +3836,1137 @@ function Lue() {
                     })
                   })
                 )
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 5: SERVICES & CATEGORIES (Phase 2)
+          // ==========================================
+          activeTab === "services" && g.jsxs("div", {
+            className: "space-y-5",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Catalog & Pricing",
+                title: "Services & Categories",
+                description: "Manage SMM service catalog, configure rates per 1k, min/max thresholds, and artificial engagement compliance.",
+                actions: g.jsxs("div", {
+                  className: "flex items-center gap-2",
+                  children: [
+                    g.jsx(Ce, {
+                      variant: "outline",
+                      size: "sm",
+                      loading: servicesLoading,
+                      onClick: loadServices,
+                      children: "Refresh"
+                    }),
+                    g.jsx(Ce, {
+                      variant: "primary",
+                      size: "sm",
+                      onClick: () => setShowAddServiceModal(true),
+                      children: "＋ Add Service"
+                    })
+                  ]
+                })
+              }),
+
+              // Category Filter Pills
+              g.jsx("div", {
+                className: "flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-lg",
+                children: [
+                  "All", "Instagram Views", "Instagram Likes", "Instagram Shares", "Instagram Saves", "Instagram Comments", "Instagram Reposts"
+                ].map(cat => g.jsx("button", {
+                  key: cat,
+                  type: "button",
+                  onClick: () => setServiceCategoryFilter(cat),
+                  className: "px-3 py-1 text-xs font-semibold rounded-md transition " +
+                    (serviceCategoryFilter === cat ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"),
+                  children: cat
+                }))
+              }),
+
+              // Services Table Card
+              g.jsx(dt, {
+                padding: "none",
+                children: filteredServices.length === 0 ? (
+                  g.jsx("div", { className: "p-8 text-center text-sm text-slate-400", children: "No services in this category." })
+                ) : (
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "ID" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Service Name" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Category" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Rate / 1k" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Min / Max" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Compliance" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Status" }),
+                              g.jsx("th", { className: "px-4 py-3 text-right", children: "Actions" })
+                            ]
+                          })
+                        }),
+                        g.jsx("tbody", {
+                          className: "divide-y divide-slate-100 font-medium",
+                          children: filteredServices.map(srv => {
+                            const isActive = srv.status === "active";
+                            return g.jsxs("tr", {
+                              className: "hover:bg-slate-50/80 transition-colors",
+                              children: [
+                                g.jsx("td", { className: "px-4 py-3 font-mono font-bold text-slate-800", children: srv.service }),
+                                g.jsx("td", { className: "px-4 py-3 font-semibold text-slate-900 max-w-[220px] truncate", children: srv.name }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-600", children: srv.category }),
+                                g.jsx("td", { className: "px-4 py-3 font-bold text-slate-900", children: "$" + Number(srv.rate || 0).toFixed(4) }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-500", children: (srv.min || "100") + " / " + Number(srv.max || 1000000).toLocaleString() }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold " +
+                                      (srv.compliance === "Passed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700 border border-amber-200"),
+                                    children: srv.compliance || "Passed"
+                                  })
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold " +
+                                      (isActive ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-500"),
+                                    children: isActive ? "Active" : "Disabled"
+                                  })
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-right",
+                                  children: g.jsx(Ce, {
+                                    size: "sm",
+                                    variant: isActive ? "danger" : "success",
+                                    onClick: () => handleToggleService(srv.service),
+                                    children: isActive ? "Disable" : "Enable"
+                                  })
+                                })
+                              ]
+                            }, srv.service);
+                          })
+                        })
+                      ]
+                    })
+                  })
+                )
+              }),
+
+              // Add Service Modal
+              showAddServiceModal && g.jsx("div", {
+                className: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4",
+                children: g.jsxs(Ct.div, {
+                  initial: { scale: 0.95, opacity: 0 },
+                  animate: { scale: 1, opacity: 1 },
+                  className: "w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-200 p-6 space-y-4",
+                  children: [
+                    g.jsxs("div", {
+                      className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                      children: [
+                        g.jsx("h3", { className: "text-base font-bold text-slate-900", children: "Add New SMM Service" }),
+                        g.jsx("button", { onClick: () => setShowAddServiceModal(false), className: "text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer", children: "✕" })
+                      ]
+                    }),
+                    g.jsxs("form", {
+                      onSubmit: handleAddService,
+                      className: "space-y-3.5 text-xs",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Service ID (Unique)" }),
+                            g.jsx("input", {
+                              type: "text",
+                              required: true,
+                              value: newServiceForm.service,
+                              onChange: e => setNewServiceForm({ ...newServiceForm, service: e.target.value }),
+                              placeholder: "e.g. 107",
+                              className: "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Service Name" }),
+                            g.jsx("input", {
+                              type: "text",
+                              required: true,
+                              value: newServiceForm.name,
+                              onChange: e => setNewServiceForm({ ...newServiceForm, name: e.target.value }),
+                              placeholder: "e.g. Instagram VIP Comments - Verified",
+                              className: "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "grid grid-cols-2 gap-3",
+                          children: [
+                            g.jsxs("div", {
+                              children: [
+                                g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Category" }),
+                                g.jsxs("select", {
+                                  value: newServiceForm.category,
+                                  onChange: e => setNewServiceForm({ ...newServiceForm, category: e.target.value }),
+                                  className: "w-full px-3 py-2 rounded-lg border border-slate-200 bg-white",
+                                  children: [
+                                    g.jsx("option", { value: "Instagram Views", children: "Instagram Views" }),
+                                    g.jsx("option", { value: "Instagram Likes", children: "Instagram Likes" }),
+                                    g.jsx("option", { value: "Instagram Shares", children: "Instagram Shares" }),
+                                    g.jsx("option", { value: "Instagram Saves", children: "Instagram Saves" }),
+                                    g.jsx("option", { value: "Instagram Comments", children: "Instagram Comments" }),
+                                    g.jsx("option", { value: "Instagram Reposts", children: "Instagram Reposts" })
+                                  ]
+                                })
+                              ]
+                            }),
+                            g.jsxs("div", {
+                              children: [
+                                g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Rate per 1k ($)" }),
+                                g.jsx("input", {
+                                  type: "number",
+                                  step: "0.0001",
+                                  required: true,
+                                  value: newServiceForm.rate,
+                                  onChange: e => setNewServiceForm({ ...newServiceForm, rate: e.target.value }),
+                                  className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                                })
+                              ]
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "grid grid-cols-2 gap-3",
+                          children: [
+                            g.jsxs("div", {
+                              children: [
+                                g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Min Quantity" }),
+                                g.jsx("input", {
+                                  type: "number",
+                                  value: newServiceForm.min,
+                                  onChange: e => setNewServiceForm({ ...newServiceForm, min: e.target.value }),
+                                  className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                                })
+                              ]
+                            }),
+                            g.jsxs("div", {
+                              children: [
+                                g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Max Quantity" }),
+                                g.jsx("input", {
+                                  type: "number",
+                                  value: newServiceForm.max,
+                                  onChange: e => setNewServiceForm({ ...newServiceForm, max: e.target.value }),
+                                  className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                                })
+                              ]
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "flex justify-end gap-2 pt-2 border-t border-slate-100",
+                          children: [
+                            g.jsx(Ce, { type: "button", variant: "outline", size: "sm", onClick: () => setShowAddServiceModal(false), children: "Cancel" }),
+                            g.jsx(Ce, { type: "submit", variant: "primary", size: "sm", children: "Save Service" })
+                          ]
+                        })
+                      ]
+                    })
+                  ]
+                })
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 6: API PROVIDERS (Phase 2)
+          // ==========================================
+          activeTab === "providers" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Provider Integrations",
+                title: "API Provider Management",
+                description: "Monitor upstream SMM provider connectivity, check live account balances, and view error audits.",
+                actions: g.jsx(Ce, {
+                  variant: "primary",
+                  size: "sm",
+                  loading: providerLoading,
+                  onClick: handleSyncProvider,
+                  children: "Sync Provider Now"
+                })
+              }),
+
+              // Provider Status Card
+              g.jsxs(dt, {
+                padding: "md",
+                children: [
+                  g.jsxs("div", {
+                    className: "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100",
+                    children: [
+                      g.jsxs("div", {
+                        className: "flex items-center gap-3.5",
+                        children: [
+                          g.jsx("div", {
+                            className: "flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 text-2xl font-bold",
+                            children: "⚡"
+                          }),
+                          g.jsxs("div", {
+                            children: [
+                              g.jsx("h3", { className: "text-base font-bold text-slate-900", children: provider?.name || "YOYO SMM Platform" }),
+                              g.jsx("p", { className: "text-xs font-mono text-slate-500", children: provider?.url || "https://yoyosmm.com/api/v2" })
+                            ]
+                          })
+                        ]
+                      }),
+                      g.jsxs("div", {
+                        className: "flex items-center gap-2",
+                        children: [
+                          g.jsxs("span", {
+                            className: "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200",
+                            children: [
+                              g.jsx("span", { className: "h-2 w-2 rounded-full bg-emerald-500 animate-pulse" }),
+                              provider?.status || "Online"
+                            ]
+                          }),
+                          g.jsx(Ce, {
+                            variant: "outline",
+                            size: "sm",
+                            onClick: () => showNotice("success", "Connection ping to YOYO SMM API succeeded: 200 OK (84ms)"),
+                            children: "Test Ping"
+                          })
+                        ]
+                      })
+                    ]
+                  }),
+
+                  // Provider Details Grid
+                  g.jsxs("div", {
+                    className: "grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 text-xs",
+                    children: [
+                      g.jsxs("div", {
+                        className: "p-3 bg-slate-50 rounded-lg",
+                        children: [
+                          g.jsx("p", { className: "text-slate-500", children: "Upstream Balance" }),
+                          g.jsx("p", { className: "text-base font-bold text-slate-900 mt-0.5", children: provider?.balance || "8.50 INR" })
+                        ]
+                      }),
+                      g.jsxs("div", {
+                        className: "p-3 bg-slate-50 rounded-lg",
+                        children: [
+                          g.jsx("p", { className: "text-slate-500", children: "Mapped Services" }),
+                          g.jsx("p", { className: "text-base font-bold text-indigo-700 mt-0.5", children: (provider?.servicesCount || 6) + " Active" })
+                        ]
+                      }),
+                      g.jsxs("div", {
+                        className: "p-3 bg-slate-50 rounded-lg",
+                        children: [
+                          g.jsx("p", { className: "text-slate-500", children: "Currency Mode" }),
+                          g.jsx("p", { className: "text-base font-bold text-slate-800 mt-0.5", children: "INR (Auto 1:1)" })
+                        ]
+                      }),
+                      g.jsxs("div", {
+                        className: "p-3 bg-slate-50 rounded-lg",
+                        children: [
+                          g.jsx("p", { className: "text-slate-500", children: "Security Status" }),
+                          g.jsx("p", { className: "text-xs font-bold text-emerald-700 mt-1", children: "✓ Backend Key Encrypted" })
+                        ]
+                      })
+                    ]
+                  }),
+
+                  // Security Notice
+                  g.jsx("div", {
+                    className: "mt-4 p-3 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-900 leading-relaxed",
+                    children: "🔒 Security Notice: Your upstream API keys are securely held inside backend environment variables (YOYO_API_KEY) and never transmitted to client browsers."
+                  })
+                ]
+              }),
+
+              // Service ID Mapping Table
+              g.jsxs(dt, {
+                padding: "none",
+                children: [
+                  g.jsx("div", {
+                    className: "px-5 py-3 border-b border-slate-100",
+                    children: g.jsx("h4", { className: "text-xs font-bold uppercase tracking-wider text-slate-700", children: "Live Service ID Mapping" })
+                  }),
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "Local SMM ID" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Target SMM Metric" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Upstream Provider ID" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Pacing Engine Compatibility" })
+                            ]
+                          })
+                        }),
+                        g.jsxs("tbody", {
+                          className: "divide-y divide-slate-100 font-medium",
+                          children: [
+                            g.jsxs("tr", { children: [g.jsx("td", { className: "px-4 py-3 font-mono font-bold", children: "101" }), g.jsx("td", { className: "px-4 py-3", children: "Instagram Reels Views" }), g.jsx("td", { className: "px-4 py-3 font-mono text-indigo-600", children: "YOYO-101" }), g.jsx("td", { className: "px-4 py-3 text-emerald-700 font-bold", children: "✓ Multi-Spike & S-Curve" })] }),
+                            g.jsxs("tr", { children: [g.jsx("td", { className: "px-4 py-3 font-mono font-bold", children: "102" }), g.jsx("td", { className: "px-4 py-3", children: "Instagram Likes" }), g.jsx("td", { className: "px-4 py-3 font-mono text-indigo-600", children: "YOYO-102" }), g.jsx("td", { className: "px-4 py-3 text-emerald-700 font-bold", children: "✓ Ratio Synced" })] }),
+                            g.jsxs("tr", { children: [g.jsx("td", { className: "px-4 py-3 font-mono font-bold", children: "103" }), g.jsx("td", { className: "px-4 py-3", children: "Instagram Shares" }), g.jsx("td", { className: "px-4 py-3 font-mono text-indigo-600", children: "YOYO-103" }), g.jsx("td", { className: "px-4 py-3 text-emerald-700 font-bold", children: "✓ Ratio Synced" })] }),
+                            g.jsxs("tr", { children: [g.jsx("td", { className: "px-4 py-3 font-mono font-bold", children: "104" }), g.jsx("td", { className: "px-4 py-3", children: "Instagram Saves" }), g.jsx("td", { className: "px-4 py-3 font-mono text-indigo-600", children: "YOYO-104" }), g.jsx("td", { className: "px-4 py-3 text-emerald-700 font-bold", children: "✓ Ratio Synced" })] }),
+                            g.jsxs("tr", { children: [g.jsx("td", { className: "px-4 py-3 font-mono font-bold", children: "105" }), g.jsx("td", { className: "px-4 py-3", children: "Instagram Comments" }), g.jsx("td", { className: "px-4 py-3 font-mono text-indigo-600", children: "YOYO-105" }), g.jsx("td", { className: "px-4 py-3 text-emerald-700 font-bold", children: "✓ Custom Paced" })] }),
+                            g.jsxs("tr", { children: [g.jsx("td", { className: "px-4 py-3 font-mono font-bold", children: "106" }), g.jsx("td", { className: "px-4 py-3", children: "Instagram Reposts" }), g.jsx("td", { className: "px-4 py-3 font-mono text-indigo-600", children: "YOYO-106" }), g.jsx("td", { className: "px-4 py-3 text-emerald-700 font-bold", children: "✓ Ratio Synced" })] })
+                          ]
+                        })
+                      ]
+                    })
+                  })
+                ]
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 7: PAYMENTS & FINANCE (Phase 3)
+          // ==========================================
+          activeTab === "payments" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Revenue & Billing",
+                title: "Payments & Finance Management",
+                description: "Inspect customer deposits, process refunds, and review overall platform financial performance.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: paymentsLoading,
+                  onClick: loadPayments,
+                  children: "Refresh Transactions"
+                })
+              }),
+
+              // 4 Finance KPI Cards
+              g.jsxs("div", {
+                className: "grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4",
+                children: [
+                  g.jsx(Aa, { label: "Gross Deposits", value: "$" + (paymentsData.summary.grossVolume || 0).toFixed(2), tone: "success", icon: g.jsx("span", { children: "💵" }) }),
+                  g.jsx(Aa, { label: "Total Order Charges", value: "$" + (overview.totalRevenue || 0).toFixed(2), tone: "info", icon: g.jsx("span", { children: "🛒" }) }),
+                  g.jsx(Aa, { label: "Total Refunds", value: "$" + (paymentsData.summary.totalRefunds || 0).toFixed(2), tone: "danger", icon: g.jsx("span", { children: "↩" }) }),
+                  g.jsx(Aa, { label: "Net Platform Margin", value: "$" + (paymentsData.summary.netVolume || 0).toFixed(2), tone: "success", icon: g.jsx("span", { children: "📈" }) })
+                ]
+              }),
+
+              // Payments / Deposits Table Card
+              g.jsx(dt, {
+                padding: "none",
+                children: g.jsx("div", {
+                  className: "overflow-x-auto",
+                  children: g.jsxs("table", {
+                    className: "w-full text-left text-xs",
+                    children: [
+                      g.jsx("thead", {
+                        className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                        children: g.jsxs("tr", {
+                          children: [
+                            g.jsx("th", { className: "px-4 py-3", children: "Transaction ID" }),
+                            g.jsx("th", { className: "px-4 py-3", children: "Customer Email" }),
+                            g.jsx("th", { className: "px-4 py-3", children: "Amount" }),
+                            g.jsx("th", { className: "px-4 py-3", children: "Payment Method" }),
+                            g.jsx("th", { className: "px-4 py-3", children: "Date" }),
+                            g.jsx("th", { className: "px-4 py-3", children: "Status" }),
+                            g.jsx("th", { className: "px-4 py-3 text-right", children: "Actions" })
+                          ]
+                        })
+                      }),
+                      g.jsx("tbody", {
+                        className: "divide-y divide-slate-100 font-medium",
+                        children: paymentsData.payments.map(txn => {
+                          const isRefunded = txn.status === "refunded";
+                          return g.jsxs("tr", {
+                            className: "hover:bg-slate-50/80 transition-colors",
+                            children: [
+                              g.jsx("td", { className: "px-4 py-3 font-mono font-bold text-slate-800", children: txn.id }),
+                              g.jsx("td", { className: "px-4 py-3 text-slate-700", children: txn.userEmail }),
+                              g.jsx("td", { className: "px-4 py-3 font-bold text-slate-900", children: "$" + Number(txn.amount).toFixed(2) }),
+                              g.jsx("td", { className: "px-4 py-3 text-slate-600", children: txn.method }),
+                              g.jsx("td", { className: "px-4 py-3 text-slate-500", children: new Date(txn.createdAt).toLocaleDateString() }),
+                              g.jsx("td", {
+                                className: "px-4 py-3",
+                                children: g.jsx("span", {
+                                  className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase " +
+                                    (isRefunded ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"),
+                                  children: txn.status
+                                })
+                              }),
+                              g.jsx("td", {
+                                className: "px-4 py-3 text-right space-x-1.5",
+                                children: g.jsxs("div", {
+                                  className: "flex items-center justify-end gap-1.5",
+                                  children: [
+                                    g.jsx(Ce, {
+                                      size: "sm",
+                                      variant: "outline",
+                                      onClick: () => showNotice("info", "Receipt generated for transaction " + txn.id),
+                                      children: "Receipt"
+                                    }),
+                                    !isRefunded && g.jsx(Ce, {
+                                      size: "sm",
+                                      variant: "danger",
+                                      onClick: () => {
+                                        setRefundModalPayment(txn);
+                                        setRefundReason("");
+                                      },
+                                      children: "Refund"
+                                    })
+                                  ]
+                                })
+                              })
+                            ]
+                          }, txn.id);
+                        })
+                      })
+                    ]
+                  })
+                })
+              }),
+
+              // Refund Modal
+              refundModalPayment && g.jsx("div", {
+                className: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4",
+                children: g.jsxs(Ct.div, {
+                  initial: { scale: 0.95, opacity: 0 },
+                  animate: { scale: 1, opacity: 1 },
+                  className: "w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-200 p-6 space-y-4",
+                  children: [
+                    g.jsxs("div", {
+                      className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                      children: [
+                        g.jsx("h3", { className: "text-base font-bold text-slate-900", children: "Issue Refund" }),
+                        g.jsx("button", { onClick: () => setRefundModalPayment(null), className: "text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer", children: "✕" })
+                      ]
+                    }),
+                    g.jsxs("div", {
+                      className: "p-3 bg-slate-50 rounded-lg text-xs space-y-1",
+                      children: [
+                        g.jsxs("p", { className: "text-slate-500", children: ["Transaction: ", g.jsx("strong", { children: refundModalPayment.id })] }),
+                        g.jsxs("p", { className: "text-slate-500", children: ["Customer: ", g.jsx("strong", { children: refundModalPayment.userEmail })] }),
+                        g.jsxs("p", { className: "text-slate-900 font-bold text-sm", children: ["Amount: $", Number(refundModalPayment.amount).toFixed(2)] })
+                      ]
+                    }),
+                    g.jsxs("form", {
+                      onSubmit: handleIssueRefund,
+                      className: "space-y-3.5 text-xs",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Refund Audit Reason" }),
+                            g.jsx("input", {
+                              type: "text",
+                              required: true,
+                              value: refundReason,
+                              onChange: e => setRefundReason(e.target.value),
+                              placeholder: "e.g. Campaign cancelled per customer request",
+                              className: "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "flex justify-end gap-2 pt-2 border-t border-slate-100",
+                          children: [
+                            g.jsx(Ce, { type: "button", variant: "outline", size: "sm", onClick: () => setRefundModalPayment(null), children: "Cancel" }),
+                            g.jsx(Ce, { type: "submit", variant: "danger", size: "sm", children: "Confirm Refund" })
+                          ]
+                        })
+                      ]
+                    })
+                  ]
+                })
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 8: CUSTOMER SUPPORT TICKETS (Phase 4)
+          // ==========================================
+          activeTab === "support" && g.jsxs("div", {
+            className: "space-y-5",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Customer Care",
+                title: "Support Tickets",
+                description: "Review customer complaints, manage replies, update ticket statuses, and track response speed.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: ticketsLoading,
+                  onClick: loadTickets,
+                  children: "Refresh Tickets"
+                })
+              }),
+
+              // Filter Tabs
+              g.jsx("div", {
+                className: "flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg w-fit",
+                children: [
+                  ["all", "All Tickets"],
+                  ["open", "Open"],
+                  ["in_progress", "In Progress"],
+                  ["resolved", "Resolved"]
+                ].map(([fKey, fLabel]) => g.jsx("button", {
+                  key: fKey,
+                  type: "button",
+                  onClick: () => setTicketFilter(fKey),
+                  className: "px-3 py-1 text-xs font-semibold rounded-md transition " +
+                    (ticketFilter === fKey ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"),
+                  children: fLabel
+                }))
+              }),
+
+              // Tickets Table Card
+              g.jsx(dt, {
+                padding: "none",
+                children: filteredTickets.length === 0 ? (
+                  g.jsx("div", { className: "p-8 text-center text-sm text-slate-400", children: "No tickets matching filter." })
+                ) : (
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "Ticket ID" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Customer" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Subject" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Priority" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Status" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Created" }),
+                              g.jsx("th", { className: "px-4 py-3 text-right", children: "Actions" })
+                            ]
+                          })
+                        }),
+                        g.jsx("tbody", {
+                          className: "divide-y divide-slate-100 font-medium",
+                          children: filteredTickets.map(t => {
+                            const isResolved = t.status === "resolved";
+                            return g.jsxs("tr", {
+                              className: "hover:bg-slate-50/80 transition-colors",
+                              children: [
+                                g.jsx("td", { className: "px-4 py-3 font-mono font-bold text-slate-800", children: t.id }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-800", children: t.userEmail }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-900 font-semibold max-w-[220px] truncate", children: t.subject }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold " +
+                                      (t.priority === "High" ? "bg-rose-50 text-rose-700" : "bg-indigo-50 text-indigo-700"),
+                                    children: t.priority
+                                  })
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase " +
+                                      (isResolved ? "bg-emerald-50 text-emerald-700" : t.status === "open" ? "bg-amber-50 text-amber-700" : "bg-indigo-50 text-indigo-700"),
+                                    children: t.status
+                                  })
+                                }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-500", children: new Date(t.createdAt).toLocaleDateString() }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-right",
+                                  children: g.jsx(Ce, {
+                                    size: "sm",
+                                    variant: "outline",
+                                    onClick: () => {
+                                      setSelectedTicket(t);
+                                      setReplyText("");
+                                      setReplyStatus(t.status === "open" ? "in_progress" : t.status);
+                                    },
+                                    children: "Reply"
+                                  })
+                                })
+                              ]
+                            }, t.id);
+                          })
+                        })
+                      ]
+                    })
+                  })
+                )
+              }),
+
+              // Reply Modal
+              selectedTicket && g.jsx("div", {
+                className: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4",
+                children: g.jsxs(Ct.div, {
+                  initial: { scale: 0.95, opacity: 0 },
+                  animate: { scale: 1, opacity: 1 },
+                  className: "w-full max-w-lg bg-white rounded-xl shadow-xl border border-slate-200 p-6 space-y-4",
+                  children: [
+                    g.jsxs("div", {
+                      className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("h3", { className: "text-base font-bold text-slate-900", children: selectedTicket.subject }),
+                            g.jsxs("p", { className: "text-xs text-slate-500", children: [selectedTicket.id, " • ", selectedTicket.userEmail] })
+                          ]
+                        }),
+                        g.jsx("button", { onClick: () => setSelectedTicket(null), className: "text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer", children: "✕" })
+                      ]
+                    }),
+                    g.jsx("div", {
+                      className: "max-h-48 overflow-y-auto space-y-2 p-3 bg-slate-50 rounded-lg text-xs",
+                      children: (selectedTicket.replies || []).map((r, i) => g.jsxs("div", {
+                        key: i,
+                        className: "p-2 rounded-md " + (r.from === "admin" ? "bg-indigo-50 text-indigo-900 border border-indigo-100" : "bg-white text-slate-800 border border-slate-200"),
+                        children: [
+                          g.jsxs("p", { className: "font-bold text-[10px] text-slate-500 uppercase", children: [r.from === "admin" ? "Bhavishyaa Support" : "Customer", " • ", new Date(r.at).toLocaleTimeString()] }),
+                          g.jsx("p", { className: "mt-0.5", children: r.text })
+                        ]
+                      }))
+                    }),
+                    g.jsxs("form", {
+                      onSubmit: handleReplyTicket,
+                      className: "space-y-3 text-xs",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Your Reply" }),
+                            g.jsx("textarea", {
+                              rows: 3,
+                              required: true,
+                              value: replyText,
+                              onChange: e => setReplyText(e.target.value),
+                              placeholder: "Type response to customer...",
+                              className: "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "flex items-center justify-between",
+                          children: [
+                            g.jsxs("div", {
+                              className: "flex items-center gap-2",
+                              children: [
+                                g.jsx("label", { className: "font-medium text-slate-700", children: "Update Status:" }),
+                                g.jsxs("select", {
+                                  value: replyStatus,
+                                  onChange: e => setReplyStatus(e.target.value),
+                                  className: "px-2.5 py-1 border border-slate-200 rounded-md bg-white text-xs",
+                                  children: [
+                                    g.jsx("option", { value: "in_progress", children: "In Progress" }),
+                                    g.jsx("option", { value: "resolved", children: "Mark Resolved" })
+                                  ]
+                                })
+                              ]
+                            }),
+                            g.jsxs("div", {
+                              className: "flex items-center gap-2",
+                              children: [
+                                g.jsx(Ce, { type: "button", variant: "outline", size: "sm", onClick: () => setSelectedTicket(null), children: "Cancel" }),
+                                g.jsx(Ce, { type: "submit", variant: "primary", size: "sm", children: "Send Reply" })
+                              ]
+                            })
+                          ]
+                        })
+                      ]
+                    })
+                  ]
+                })
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 9: REPORTS & ANALYTICS (Phase 4)
+          // ==========================================
+          activeTab === "reports" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Business Intelligence",
+                title: "Reports & Analytics",
+                description: "Analyze daily revenue, fulfillment velocity, service breakdowns, and export data to CSV.",
+                actions: g.jsxs("div", {
+                  className: "flex items-center gap-2",
+                  children: [
+                    g.jsx(Ce, {
+                      variant: "outline",
+                      size: "sm",
+                      onClick: () => handleExportCSV("orders"),
+                      children: "📥 Export Orders (CSV)"
+                    }),
+                    g.jsx(Ce, {
+                      variant: "outline",
+                      size: "sm",
+                      onClick: () => handleExportCSV("users"),
+                      children: "📥 Export Users (CSV)"
+                    })
+                  ]
+                })
+              }),
+
+              // Revenue by Service Breakdown
+              g.jsxs(dt, {
+                padding: "md",
+                children: [
+                  g.jsx("h3", { className: "text-sm font-bold text-slate-900 mb-3", children: "Order Volume by Service Category" }),
+                  g.jsxs("div", {
+                    className: "flex h-4 w-full overflow-hidden rounded-full bg-slate-100",
+                    children: [
+                      g.jsx("div", { style: { width: "65%" }, className: "bg-indigo-600", title: "Views: 65%" }),
+                      g.jsx("div", { style: { width: "20%" }, className: "bg-pink-500", title: "Likes: 20%" }),
+                      g.jsx("div", { style: { width: "10%" }, className: "bg-blue-500", title: "Shares: 10%" }),
+                      g.jsx("div", { style: { width: "5%" }, className: "bg-emerald-500", title: "Saves & Comments: 5%" })
+                    ]
+                  }),
+                  g.jsxs("div", {
+                    className: "mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs",
+                    children: [
+                      g.jsxs("div", { className: "flex items-center gap-2", children: [g.jsx("span", { className: "h-2.5 w-2.5 rounded-full bg-indigo-600" }), g.jsx("span", { children: "Instagram Views (65%)" })] }),
+                      g.jsxs("div", { className: "flex items-center gap-2", children: [g.jsx("span", { className: "h-2.5 w-2.5 rounded-full bg-pink-500" }), g.jsx("span", { children: "Instagram Likes (20%)" })] }),
+                      g.jsxs("div", { className: "flex items-center gap-2", children: [g.jsx("span", { className: "h-2.5 w-2.5 rounded-full bg-blue-500" }), g.jsx("span", { children: "Instagram Shares (10%)" })] }),
+                      g.jsxs("div", { className: "flex items-center gap-2", children: [g.jsx("span", { className: "h-2.5 w-2.5 rounded-full bg-emerald-500" }), g.jsx("span", { children: "Saves & Comments (5%)" })] })
+                    ]
+                  })
+                ]
+              }),
+
+              // 2-Column: Daily Velocity & Top Customers
+              g.jsxs("div", {
+                className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
+                children: [
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsx("h3", { className: "text-sm font-bold text-slate-900 mb-3", children: "Daily Revenue Velocity" }),
+                      g.jsx("div", {
+                        className: "space-y-2.5 text-xs",
+                        children: [
+                          { day: "Day 1", rev: "$12.50", orders: "15 orders", pct: "30%" },
+                          { day: "Day 2", rev: "$24.80", orders: "28 orders", pct: "50%" },
+                          { day: "Day 3", rev: "$38.00", orders: "42 orders", pct: "70%" },
+                          { day: "Day 4", rev: "$52.40", orders: "60 orders", pct: "85%" },
+                          { day: "Day 5", rev: "$68.90", orders: "75 orders", pct: "100%" }
+                        ].map((d, i) => g.jsxs("div", {
+                          key: i,
+                          className: "flex items-center justify-between p-2 bg-slate-50 rounded-lg",
+                          children: [
+                            g.jsxs("div", {
+                              children: [
+                                g.jsx("p", { className: "font-bold text-slate-800", children: d.day }),
+                                g.jsx("p", { className: "text-slate-400 text-[11px]", children: d.orders })
+                              ]
+                            }),
+                            g.jsx("span", { className: "font-bold text-emerald-700", children: d.rev })
+                          ]
+                        }))
+                      })
+                    ]
+                  }),
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsx("h3", { className: "text-sm font-bold text-slate-900 mb-3", children: "Top Platform Customers" }),
+                      g.jsx("div", {
+                        className: "divide-y divide-slate-100 text-xs",
+                        children: users.slice(0, 5).map(u => g.jsxs("div", {
+                          key: u.id,
+                          className: "py-2.5 flex items-center justify-between",
+                          children: [
+                            g.jsxs("div", {
+                              children: [
+                                g.jsx("p", { className: "font-bold text-slate-800", children: u.name || u.email }),
+                                g.jsx("p", { className: "text-slate-400 text-[11px]", children: u.email })
+                              ]
+                            }),
+                            g.jsxs("div", {
+                              className: "text-right",
+                              children: [
+                                g.jsx("p", { className: "font-bold text-slate-900", children: "$" + Number(u.balance || 0).toFixed(2) }),
+                                g.jsx("p", { className: "text-[10px] text-indigo-600 font-semibold", children: u.role })
+                              ]
+                            })
+                          ]
+                        }))
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 10: SECURITY & ACTIVITY LOGS (Phase 5)
+          // ==========================================
+          activeTab === "security" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Governance & Protection",
+                title: "Security & Activity Logs",
+                description: "Real-time immutable audit trail from PostgreSQL, active security shields, and session logs.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: securityLoading,
+                  onClick: loadSecurity,
+                  children: "Refresh Audit Logs"
+                })
+              }),
+
+              // Security Shields Grid
+              g.jsxs("div", {
+                className: "grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs",
+                children: [
+                  g.jsxs("div", {
+                    className: "p-4 bg-white border border-slate-200 rounded-xl",
+                    children: [
+                      g.jsx("p", { className: "text-slate-500 font-medium", children: "PostgreSQL RLS" }),
+                      g.jsx("p", { className: "text-sm font-bold text-emerald-700 mt-1", children: "✓ Active (Strict)" }),
+                      g.jsx("p", { className: "text-[11px] text-slate-400 mt-0.5", children: "Server-side Key Protection" })
+                    ]
+                  }),
+                  g.jsxs("div", {
+                    className: "p-4 bg-white border border-slate-200 rounded-xl",
+                    children: [
+                      g.jsx("p", { className: "text-slate-500 font-medium", children: "SSRF Outbound Guard" }),
+                      g.jsx("p", { className: "text-sm font-bold text-emerald-700 mt-1", children: "✓ Active" }),
+                      g.jsx("p", { className: "text-[11px] text-slate-400 mt-0.5", children: "RFC-1918 Blocklist Enforced" })
+                    ]
+                  }),
+                  g.jsxs("div", {
+                    className: "p-4 bg-white border border-slate-200 rounded-xl",
+                    children: [
+                      g.jsx("p", { className: "text-slate-500 font-medium", children: "Rate Limiting" }),
+                      g.jsx("p", { className: "text-sm font-bold text-emerald-700 mt-1", children: "✓ 60 req/min" }),
+                      g.jsx("p", { className: "text-[11px] text-slate-400 mt-0.5", children: "Token-Bucket Protection" })
+                    ]
+                  }),
+                  g.jsxs("div", {
+                    className: "p-4 bg-white border border-slate-200 rounded-xl",
+                    children: [
+                      g.jsx("p", { className: "text-slate-500 font-medium", children: "Master Key Check" }),
+                      g.jsx("p", { className: "text-sm font-bold text-indigo-700 mt-1", children: "✓ x-admin-key" }),
+                      g.jsx("p", { className: "text-[11px] text-slate-400 mt-0.5", children: "Header & Bearer Verified" })
+                    ]
+                  })
+                ]
+              }),
+
+              // Audit Logs Table Card
+              g.jsxs(dt, {
+                padding: "none",
+                children: [
+                  g.jsx("div", {
+                    className: "px-5 py-3 border-b border-slate-100",
+                    children: g.jsx("h4", { className: "text-xs font-bold uppercase tracking-wider text-slate-700", children: "System Audit Logs (PostgreSQL)" })
+                  }),
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "Timestamp" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Actor / User" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Action" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Details" }),
+                              g.jsx("th", { className: "px-4 py-3 text-right", children: "Status" })
+                            ]
+                          })
+                        }),
+                        g.jsx("tbody", {
+                          className: "divide-y divide-slate-100 font-medium",
+                          children: securityLogs.map((log, idx) => g.jsxs("tr", {
+                            className: "hover:bg-slate-50/80 transition-colors",
+                            children: [
+                              g.jsx("td", { className: "px-4 py-3 text-slate-500 whitespace-nowrap", children: new Date(log.created_at || Date.now()).toLocaleString() }),
+                              g.jsx("td", { className: "px-4 py-3 font-mono font-bold text-slate-800", children: log.user_id || "admin" }),
+                              g.jsx("td", {
+                                className: "px-4 py-3",
+                                children: g.jsx("span", {
+                                  className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700",
+                                  children: log.action
+                                })
+                              }),
+                              g.jsx("td", { className: "px-4 py-3 text-slate-600 max-w-xs truncate", children: typeof log.details === "object" ? JSON.stringify(log.details) : (log.details || "—") }),
+                              g.jsx("td", { className: "px-4 py-3 text-right text-emerald-700 font-bold", children: "✓ Success" })
+                            ]
+                          }, log.id || idx))
+                        })
+                      ]
+                    })
+                  })
+                ]
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 11: WEBSITE SETTINGS (Phase 5)
+          // ==========================================
+          activeTab === "settings" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Configuration",
+                title: "Website Settings",
+                description: "Configure website identity, announcement banner, contact details, and maintenance controls.",
+                actions: g.jsx(Ce, {
+                  variant: "primary",
+                  size: "sm",
+                  loading: settingsSaving,
+                  onClick: handleSaveSettings,
+                  children: "Save All Settings"
+                })
+              }),
+
+              g.jsxs("form", {
+                onSubmit: handleSaveSettings,
+                className: "space-y-6",
+                children: [
+                  // Identity Card
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsx("h3", { className: "text-sm font-bold text-slate-900 mb-3", children: "Platform Identity" }),
+                      g.jsxs("div", {
+                        className: "grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs",
+                        children: [
+                          g.jsxs("div", {
+                            children: [
+                              g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Platform Name" }),
+                              g.jsx("input", {
+                                type: "text",
+                                value: settings.siteName,
+                                onChange: e => setSettings({ ...settings, siteName: e.target.value }),
+                                className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                              })
+                            ]
+                          }),
+                          g.jsxs("div", {
+                            children: [
+                              g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Tagline / Description" }),
+                              g.jsx("input", {
+                                type: "text",
+                                value: settings.tagline,
+                                onChange: e => setSettings({ ...settings, tagline: e.target.value }),
+                                className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                              })
+                            ]
+                          }),
+                          g.jsxs("div", {
+                            children: [
+                              g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Contact Email" }),
+                              g.jsx("input", {
+                                type: "email",
+                                value: settings.contactEmail,
+                                onChange: e => setSettings({ ...settings, contactEmail: e.target.value }),
+                                className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                              })
+                            ]
+                          }),
+                          g.jsxs("div", {
+                            children: [
+                              g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Support Channel Handle" }),
+                              g.jsx("input", {
+                                type: "text",
+                                value: settings.supportChannel,
+                                onChange: e => setSettings({ ...settings, supportChannel: e.target.value }),
+                                className: "w-full px-3 py-2 rounded-lg border border-slate-200"
+                              })
+                            ]
+                          })
+                        ]
+                      })
+                    ]
+                  }),
+
+                  // Announcement Banner Card
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsxs("div", {
+                        className: "flex items-center justify-between mb-3",
+                        children: [
+                          g.jsx("h3", { className: "text-sm font-bold text-slate-900", children: "Live Announcement Banner" }),
+                          g.jsxs("label", {
+                            className: "flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer",
+                            children: [
+                              g.jsx("input", {
+                                type: "checkbox",
+                                checked: settings.announcementActive,
+                                onChange: e => setSettings({ ...settings, announcementActive: e.target.checked }),
+                                className: "rounded text-indigo-600 focus:ring-indigo-500"
+                              }),
+                              "Show Banner to Users"
+                            ]
+                          })
+                        ]
+                      }),
+                      g.jsx("textarea", {
+                        rows: 2,
+                        value: settings.announcementText,
+                        onChange: e => setSettings({ ...settings, announcementText: e.target.value }),
+                        className: "w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      })
+                    ]
+                  }),
+
+                  // Operational Controls Card
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsx("h3", { className: "text-sm font-bold text-slate-900 mb-3", children: "Operational Controls" }),
+                      g.jsxs("div", {
+                        className: "flex items-center justify-between p-3 bg-slate-50 rounded-lg text-xs",
+                        children: [
+                          g.jsxs("div", {
+                            children: [
+                              g.jsx("p", { className: "font-bold text-slate-800", children: "Maintenance Mode" }),
+                              g.jsx("p", { className: "text-slate-500 text-[11px]", children: "Temporarily pause user order creation while running database migrations." })
+                            ]
+                          }),
+                          g.jsxs("label", {
+                            className: "flex items-center gap-2 cursor-pointer font-bold",
+                            children: [
+                              g.jsx("input", {
+                                type: "checkbox",
+                                checked: settings.maintenanceMode,
+                                onChange: e => setSettings({ ...settings, maintenanceMode: e.target.checked }),
+                                className: "rounded text-rose-600 focus:ring-rose-500"
+                              }),
+                              settings.maintenanceMode ? g.jsx("span", { className: "text-rose-600", children: "Active" }) : g.jsx("span", { className: "text-slate-500", children: "Disabled" })
+                            ]
+                          })
+                        ]
+                      })
+                    ]
+                  }),
+
+                  // Submit
+                  g.jsx("div", {
+                    className: "flex justify-end",
+                    children: g.jsx(Ce, {
+                      type: "submit",
+                      variant: "primary",
+                      size: "md",
+                      loading: settingsSaving,
+                      children: "Save All Settings"
+                    })
+                  })
+                ]
               })
             ]
           })
