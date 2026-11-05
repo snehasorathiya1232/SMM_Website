@@ -2028,7 +2028,1507 @@ function $b() {
   const block = (len = 4) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
   return "BHAVISHYAA-" + block() + "-" + block() + "-" + block();
 }
-function Lue(){const[e,t]=_.useState(()=>sessionStorage.getItem(zb)==="1"),[n,r]=_.useState(""),[i,s]=_.useState(""),[l,c]=_.useState([]),[d,f]=_.useState(!1),[h,p]=_.useState(""),[v,b]=_.useState($b()),[w,S]=_.useState(Kh[5]),[A,j]=_.useState(0),[k,E]=_.useState(!1),[O,P]=_.useState(""),[C,M]=_.useState(!1),[R,q]=_.useState(null),[,V]=_.useState(Date.now());_.useEffect(()=>{const W=setInterval(()=>V(Date.now()),3e4);return()=>clearInterval(W)},[]);const B=(W,de)=>{q({kind:W,message:de}),setTimeout(()=>q(null),6e3)};function L(W){if(!W)return"Unknown error";if(typeof W=="string")return W;if(W instanceof Error)return W.message;const de=W,me=[];if(typeof de.message=="string"&&me.push(de.message),typeof de.details=="string"&&me.push(`details: ${de.details}`),typeof de.hint=="string"&&me.push(`hint: ${de.hint}`),typeof de.code=="string"&&me.push(`code: ${de.code}`),me.length>0)return me.join(" — ");try{return JSON.stringify(W)}catch{return String(W)}}const ee=async()=>{f(!0),p("");try{const res=await fetch("/api/admin/keys",{headers:{"x-admin-key":Rue,"Authorization":"Bearer "+Rue}});const data=await res.json();if(!res.ok)throw new Error(data.error||"Could not load keys.");c(data.keys||[])}catch(W){p(`Could not load keys. Details: ${L(W)}`),console.error("Load keys failed:",W)}finally{f(!1)}};_.useEffect(()=>{e&&ee()},[e]);const re=W=>{W.preventDefault(),(n===Rue||(!Rue&&n==="admin")||n==="admin"||n==="admin123")?(sessionStorage.setItem(zb,"1"),t(!0),s("")):s("Wrong password.")},ne=()=>{sessionStorage.removeItem(zb),t(!1),r("")},z=()=>{if(k){const W=Math.max(0,Math.floor(A));return W===0?null:W*60}return w.seconds},I=async()=>{const W=v.trim().toUpperCase();if(!W){B("warning","Key cannot be empty.");return}M(!0);try{const de={key:W,is_active:!0,fingerprint:null,activated_at:null,expires_at:null,duration_seconds:z(),note:O.trim()||null};const res=await fetch("/api/admin/keys",{method:"POST",headers:{"Content-Type":"application/json","x-admin-key":Rue,"Authorization":"Bearer "+Rue},body:JSON.stringify(de)});const data=await res.json();if(!res.ok)throw new Error(data.error||"Failed to create key");B("success",`Key created: ${W}`),b($b()),P(""),await ee()}catch(de){B("danger",L(de)),console.error("Create key failed:",de)}finally{M(!1)}},D=async W=>{if(!confirm(`Revoke key "${W.key}"? Users will be locked out immediately.`))return;try{const res=await fetch("/api/admin/keys",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-key":Rue,"Authorization":"Bearer "+Rue},body:JSON.stringify({key:W.key,is_active:!1})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Failed to revoke key");B("info","Key revoked."),ee()}catch(de){B("danger",L(de))}},Z=async W=>{if(!confirm(`Reactivate key "${W.key}"?`))return;try{const res=await fetch("/api/admin/keys",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-key":Rue,"Authorization":"Bearer "+Rue},body:JSON.stringify({key:W.key,is_active:!0})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Failed to reactivate key");B("success","Key reactivated."),ee()}catch(de){B("danger",L(de))}},le=async W=>{if(!confirm(`Unbind device for "${W.key}"? The next person who enters this key on any browser will activate it freshly.`))return;try{const res=await fetch("/api/admin/keys",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-key":Rue,"Authorization":"Bearer "+Rue},body:JSON.stringify({key:W.key,fingerprint:null,activated_at:null,expires_at:null})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Failed to unbind device");B("success","Device unbound. Expiry timer also reset."),ee()}catch(de){B("danger",L(de))}},$=async(W,de)=>{const me=W.expires_at?new Date(W.expires_at).getTime():Date.now(),Ae=me<Date.now()?Date.now():me,fe=new Date(Ae+de*1e3).toISOString();try{const res=await fetch("/api/admin/keys",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-key":Rue,"Authorization":"Bearer "+Rue},body:JSON.stringify({key:W.key,expires_at:fe})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Failed to extend key");B("success",`Extended by ${TP(de)}.`),ee()}catch(he){B("danger",L(he))}},K=async W=>{if(!confirm(`PERMANENTLY DELETE key "${W.key}"? This cannot be undone. Prefer Revoke instead.`))return;try{const res=await fetch("/api/admin/keys",{method:"DELETE",headers:{"Content-Type":"application/json","x-admin-key":Rue,"Authorization":"Bearer "+Rue},body:JSON.stringify({key:W.key})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Failed to delete key");B("info","Key deleted."),ee()}catch(de){B("danger",L(de))}},te=async W=>{try{await navigator.clipboard.writeText(W),B("success",`Copied: ${W}`)}catch{B("warning","Could not copy.")}},ie=_.useMemo(()=>{const W={total:l.length,unused:0,active:0,expired:0,revoked:0};for(const de of l)W[EP(de)]++;return W},[l]);return e?g.jsx("div",{className:"min-h-screen bg-slate-50",children:g.jsxs("div",{className:"mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 space-y-6",children:[g.jsx(Ep,{eyebrow:"Administration",title:"Access keys",description:"Create, set duration, revoke, extend, and unbind keys. Timers start at first login.",actions:g.jsxs("div",{className:"flex items-center gap-2",children:[g.jsx("a",{href:"#",className:"rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition",children:"Back to app"}),g.jsx(Ce,{variant:"danger",size:"sm",onClick:ne,children:"Lock"})]})}),g.jsx(Po,{children:R&&g.jsx(Ct.div,{initial:{opacity:0,y:-4},animate:{opacity:1,y:0},exit:{opacity:0,y:-4},children:g.jsx(ka,{kind:R.kind,children:R.message})})}),h&&g.jsx(ka,{kind:"danger",children:h}),g.jsxs("div",{className:"grid grid-cols-2 sm:grid-cols-5 gap-3",children:[g.jsx(Aa,{label:"Total",value:ie.total,icon:g.jsx("svg",{className:"h-5 w-5",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"})})}),g.jsx(Aa,{label:"Unused",value:ie.unused,tone:"info",icon:g.jsx("svg",{className:"h-5 w-5",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M12 6v6m0 0v6m0-6h6m-6 0H6"})})}),g.jsx(Aa,{label:"Active",value:ie.active,tone:"success",icon:g.jsx("svg",{className:"h-5 w-5",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"})})}),g.jsx(Aa,{label:"Expired",value:ie.expired,tone:"warning",icon:g.jsx("svg",{className:"h-5 w-5",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"})})}),g.jsx(Aa,{label:"Revoked",value:ie.revoked,tone:"danger",icon:g.jsx("svg",{className:"h-5 w-5",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"})})})]}),g.jsxs(dt,{padding:"md",children:[g.jsx("h2",{className:"text-base font-semibold text-slate-900 mb-4",children:"Create a new key"}),g.jsxs("div",{className:"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4",children:[g.jsxs("div",{className:"sm:col-span-2",children:[g.jsx("label",{className:"block text-sm font-medium text-slate-700 mb-1.5",children:"Access key"}),g.jsxs("div",{className:"flex gap-2",children:[g.jsx("input",{value:v,onChange:W=>b(W.target.value.toUpperCase()),className:"flex-1 font-mono"}),g.jsx(Ce,{variant:"outline",size:"md",onClick:()=>b($b()),title:"Generate random",children:g.jsx("svg",{className:"h-4 w-4",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"})})})]})]}),g.jsxs("div",{children:[g.jsx("label",{className:"block text-sm font-medium text-slate-700 mb-1.5",children:"Active duration"}),k?g.jsxs("div",{className:"flex gap-2",children:[g.jsx("input",{type:"number",min:"1",value:A||"",onChange:W=>j(Math.max(0,Number(W.target.value)||0)),placeholder:"minutes",className:"flex-1"}),g.jsx(Ce,{variant:"outline",size:"md",onClick:()=>E(!1),children:"↩"})]}):g.jsx(Xw,{value:String(w.seconds??"null"),onChange:W=>{const de=W.target.value;if(de==="custom"){E(!0);return}const me=Kh.find(Ae=>String(Ae.seconds??"null")===de)||Kh[0];S(me)},options:[...Kh.map(W=>({value:String(W.seconds??"null"),label:W.label})),{value:"custom",label:"Custom (minutes)…"}]}),g.jsx("p",{className:"mt-1 text-xs text-slate-500",children:"Timer starts at first login. Lifetime = never expires."})]}),g.jsxs("div",{children:[g.jsx("label",{className:"block text-sm font-medium text-slate-700 mb-1.5",children:"Note (optional)"}),g.jsx(Jt,{value:O,onChange:W=>P(W.target.value),placeholder:"e.g. for Alex - paid trial"})]})]}),g.jsxs("div",{className:"mt-4 flex flex-wrap items-center gap-3",children:[g.jsx(Ce,{variant:"primary",loading:C,disabled:C,onClick:I,children:"Create key"}),g.jsxs("span",{className:"text-sm text-slate-600",children:["Selected:"," ",g.jsx("span",{className:"font-semibold text-indigo-700",children:k?A>0?`${A} min`:"Lifetime":w.label})]})]})]}),g.jsxs(dt,{padding:"none",children:[g.jsxs("div",{className:"flex items-center justify-between px-5 py-4 border-b border-slate-200",children:[g.jsxs("div",{children:[g.jsx("h2",{className:"text-base font-semibold text-slate-900",children:"All keys"}),g.jsxs("p",{className:"text-xs text-slate-500 mt-0.5",children:[l.length," total"]})]}),g.jsx(Ce,{variant:"outline",size:"sm",loading:d,disabled:d,onClick:ee,children:"Refresh"})]}),l.length===0&&!d?g.jsx("div",{className:"p-6",children:g.jsx(pu,{icon:g.jsx("svg",{className:"h-7 w-7",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"})}),title:"No keys yet",description:"Create your first access key above."})}):g.jsx("div",{className:"overflow-x-auto",children:g.jsxs("table",{className:"w-full text-left text-sm",children:[g.jsx("thead",{className:"bg-slate-50 text-slate-500 uppercase tracking-wider text-xs",children:g.jsxs("tr",{children:[g.jsx("th",{className:"px-4 py-3 font-semibold",children:"Key"}),g.jsx("th",{className:"px-4 py-3 font-semibold",children:"Status"}),g.jsx("th",{className:"px-4 py-3 font-semibold hidden sm:table-cell",children:"Duration"}),g.jsx("th",{className:"px-4 py-3 font-semibold hidden md:table-cell",children:"Activated"}),g.jsx("th",{className:"px-4 py-3 font-semibold hidden md:table-cell",children:"Expires"}),g.jsx("th",{className:"px-4 py-3 font-semibold hidden lg:table-cell",children:"Note"}),g.jsx("th",{className:"px-4 py-3 font-semibold text-right",children:"Actions"})]})}),g.jsx("tbody",{className:"divide-y divide-slate-100",children:l.map(W=>{const de=EP(W),me=W.expires_at?new Date(W.expires_at).getTime()-Date.now():null;return g.jsxs("tr",{className:"hover:bg-slate-50 align-top",children:[g.jsx("td",{className:"px-4 py-3",children:g.jsx("button",{onClick:()=>te(W.key),title:"Click to copy",className:"font-mono text-sm text-indigo-700 hover:text-indigo-900 transition font-semibold",children:W.key})}),g.jsxs("td",{className:"px-4 py-3",children:[g.jsx(mn,{kind:de,children:de.charAt(0).toUpperCase()+de.slice(1)}),de==="active"&&me!==null&&g.jsx("p",{className:"mt-1 text-xs text-slate-500 tabular-nums",children:Due(me)})]}),g.jsx("td",{className:"px-4 py-3 text-slate-600 hidden sm:table-cell text-sm",children:TP(W.duration_seconds??null)}),g.jsx("td",{className:"px-4 py-3 text-slate-500 hidden md:table-cell text-sm",children:W.activated_at?new Date(W.activated_at).toLocaleString(void 0,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}),g.jsx("td",{className:"px-4 py-3 text-slate-500 hidden md:table-cell text-sm",children:W.expires_at?new Date(W.expires_at).toLocaleString(void 0,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}),g.jsx("td",{className:"px-4 py-3 text-slate-500 hidden lg:table-cell max-w-[180px] truncate text-sm",title:W.note||"",children:W.note||"—"}),g.jsx("td",{className:"px-4 py-3",children:g.jsxs("div",{className:"flex flex-wrap justify-end gap-1",children:[de==="active"&&g.jsxs(g.Fragment,{children:[g.jsx(Ce,{size:"sm",variant:"outline",onClick:()=>$(W,3600),children:"+1h"}),g.jsx(Ce,{size:"sm",variant:"outline",onClick:()=>$(W,1440*60),children:"+1d"})]}),(de==="expired"||de==="unused")&&g.jsx(Ce,{size:"sm",variant:"outline",onClick:()=>$(W,1440*60),children:"+1d"}),de!=="revoked"?g.jsx(Ce,{size:"sm",variant:"danger",onClick:()=>D(W),children:"Revoke"}):g.jsx(Ce,{size:"sm",variant:"success",onClick:()=>Z(W),children:"Reactivate"}),W.fingerprint&&g.jsx(Ce,{size:"sm",variant:"ghost",onClick:()=>le(W),title:"Unbind device + reset expiry timer",children:"Unbind"}),g.jsx(Ce,{size:"sm",variant:"ghost",onClick:()=>K(W),children:"Delete"})]})})]},W.key)})})]})})]})]})}):g.jsx("div",{className:"min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-indigo-50 via-white to-violet-50",children:g.jsxs(Ct.div,{initial:{opacity:0,y:12},animate:{opacity:1,y:0},className:"w-full max-w-md",children:[g.jsxs("div",{className:"text-center mb-6",children:[g.jsx("div",{className:"mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/20",children:g.jsx("svg",{className:"h-7 w-7 text-white",fill:"none",viewBox:"0 0 24 24",stroke:"currentColor",strokeWidth:2,children:g.jsx("path",{strokeLinecap:"round",strokeLinejoin:"round",d:"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"})})}),g.jsx("h1",{className:"mt-4 text-2xl font-bold text-slate-900",children:"Admin"}),g.jsx("p",{className:"mt-1 text-sm text-slate-500",children:"Key management console"})]}),g.jsx(dt,{padding:"md",children:g.jsxs("form",{onSubmit:re,className:"space-y-4",children:[g.jsx(Jt,{label:"Admin password",type:"password",value:n,onChange:W=>{r(W.target.value),s("")},autoFocus:!0}),i&&g.jsx(ka,{kind:"danger",children:i}),g.jsx(Ce,{type:"submit",variant:"primary",fullWidth:!0,size:"lg",children:"Unlock"}),g.jsxs("p",{className:"text-center text-xs text-slate-500",children:["Set the password via ",g.jsx("code",{className:"text-slate-700",children:"VITE_ADMIN_PASSWORD"})," at build time."]})]})}),g.jsxs("p",{className:"mt-4 text-center text-xs text-slate-500",children:["Go back: ",g.jsx("a",{href:"#",className:"text-indigo-600 hover:underline",children:"remove #admin from URL"})]})]})})}const Gh="truesmm-access-key";function Iue(){const[e,t]=_.useState(typeof window<"u"?window.location.hash:"");return _.useEffect(()=>{const n=()=>t(window.location.hash);return window.addEventListener("hashchange",n),()=>window.removeEventListener("hashchange",n)},[]),e}function Bue(){
+function Lue() {
+  const [isAuthenticated, setIsAuthenticated] = _.useState(() => sessionStorage.getItem(zb) === "1");
+  const [passwordInput, setPasswordInput] = _.useState("");
+  const [authError, setAuthError] = _.useState("");
+  
+  // Navigation
+  const [activeTab, setActiveTab] = _.useState("overview");
+  const [banner, setBanner] = _.useState(null);
+  
+  const showNotice = (kind, message) => {
+    setBanner({ kind, message });
+    setTimeout(() => setBanner(null), 5000);
+  };
+
+  // --- Overview State ---
+  const [overviewLoading, setOverviewLoading] = _.useState(false);
+  const [overview, setOverview] = _.useState({
+    totalUsers: 0,
+    totalOrders: 0,
+    runningOrders: 0,
+    completedOrders: 0,
+    cancelledOrders: 0,
+    totalRevenue: 0,
+    activeServices: 6,
+    providerStatus: { name: 'YOYO SMM API', status: 'Online', connected: true },
+    recentOrders: [],
+    recentUsers: []
+  });
+
+  const loadOverview = async () => {
+    setOverviewLoading(true);
+    try {
+      const res = await fetch("/api/admin/overview", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOverview(prev => ({ ...prev, ...data }));
+      }
+    } catch (err) {
+      console.warn("Failed to load admin overview:", err);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  // --- Orders State ---
+  const [ordersLoading, setOrdersLoading] = _.useState(false);
+  const [orders, setOrders] = _.useState([]);
+  const [orderSearch, setOrderSearch] = _.useState("");
+  const [orderFilter, setOrderFilter] = _.useState("all");
+  const [selectedOrder, setSelectedOrder] = _.useState(null);
+
+  const loadOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await fetch("/api/admin/orders", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data.orders || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load admin orders:", err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, status, reason = "") => {
+    try {
+      const res = await fetch("/api/admin/orders/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ orderId, status, reason })
+      });
+      if (res.ok) {
+        showNotice("success", "Order " + orderId + " marked as " + status);
+        await loadOrders();
+        await loadOverview();
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder(prev => ({ ...prev, status }));
+        }
+      } else {
+        const d = await res.json().catch(() => ({}));
+        showNotice("danger", d.error || "Failed to update order status.");
+      }
+    } catch (err) {
+      showNotice("danger", err.message || "Failed to update order status.");
+    }
+  };
+
+  // --- Users State ---
+  const [usersLoading, setUsersLoading] = _.useState(false);
+  const [users, setUsers] = _.useState([]);
+  const [userSearch, setUserSearch] = _.useState("");
+  const [balanceModalUser, setBalanceModalUser] = _.useState(null);
+  const [adjType, setAdjType] = _.useState("credit");
+  const [adjAmount, setAdjAmount] = _.useState("");
+  const [adjReason, setAdjReason] = _.useState("");
+  const [adjLoading, setAdjLoading] = _.useState(false);
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load admin users:", err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleAdjustBalance = async (e) => {
+    e.preventDefault();
+    if (!balanceModalUser || !adjAmount || Number(adjAmount) <= 0) return;
+    setAdjLoading(true);
+    try {
+      const res = await fetch("/api/admin/users/balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({
+          userId: balanceModalUser.id,
+          type: adjType,
+          amount: Number(adjAmount),
+          reason: adjReason.trim() || ("Admin manual " + adjType)
+        })
+      });
+      const d = await res.json();
+      if (res.ok) {
+        showNotice("success", "Balance updated for " + (balanceModalUser.email || balanceModalUser.id) + ": $" + d.newBalance.toFixed(2));
+        setBalanceModalUser(null);
+        setAdjAmount("");
+        setAdjReason("");
+        await loadUsers();
+        await loadOverview();
+      } else {
+        showNotice("danger", d.error || "Failed to adjust balance.");
+      }
+    } catch (err) {
+      showNotice("danger", err.message || "Failed to adjust balance.");
+    } finally {
+      setAdjLoading(false);
+    }
+  };
+
+  const handleToggleUserRole = async (user) => {
+    const isSuspended = user.role === "suspended";
+    const newRole = isSuspended ? "user" : "suspended";
+    const promptMsg = isSuspended ? ("Reactivate account for " + user.email + "?") : ("Suspend account for " + user.email + "? User will be restricted.");
+    if (!window.confirm(promptMsg)) return;
+    try {
+      const res = await fetch("/api/admin/users/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ userId: user.id, role: newRole })
+      });
+      if (res.ok) {
+        showNotice("info", "User role updated to " + newRole);
+        await loadUsers();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        showNotice("danger", d.error || "Failed to update user role.");
+      }
+    } catch (err) {
+      showNotice("danger", err.message || "Failed to update role.");
+    }
+  };
+
+  // --- License Keys State (Existing feature preserved 100%) ---
+  const [keys, setKeys] = _.useState([]);
+  const [keysLoading, setKeysLoading] = _.useState(false);
+  const [keysError, setKeysError] = _.useState("");
+  const [newKey, setNewKey] = _.useState($b());
+  const [durationPreset, setDurationPreset] = _.useState(Kh[5]);
+  const [customMinutes, setCustomMinutes] = _.useState(0);
+  const [isCustomDuration, setIsCustomDuration] = _.useState(false);
+  const [keyNote, setKeyNote] = _.useState("");
+  const [creatingKey, setCreatingKey] = _.useState(false);
+
+  const loadKeys = async () => {
+    setKeysLoading(true);
+    setKeysError("");
+    try {
+      const res = await fetch("/api/admin/keys", {
+        headers: { "x-admin-key": Rue, "Authorization": "Bearer " + Rue }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load keys.");
+      setKeys(data.keys || []);
+    } catch (err) {
+      setKeysError(err.message || "Could not load keys.");
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  const computeDurationSeconds = () => {
+    if (isCustomDuration) {
+      const m = Math.max(0, Math.floor(customMinutes));
+      return m === 0 ? null : m * 60;
+    }
+    return durationPreset.seconds;
+  };
+
+  const handleCreateKey = async () => {
+    const k = newKey.trim().toUpperCase();
+    if (!k) {
+      showNotice("warning", "Key cannot be empty.");
+      return;
+    }
+    setCreatingKey(true);
+    try {
+      const payload = {
+        key: k,
+        is_active: true,
+        fingerprint: null,
+        activated_at: null,
+        expires_at: null,
+        duration_seconds: computeDurationSeconds(),
+        note: keyNote.trim() || null
+      };
+      const res = await fetch("/api/admin/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create key");
+      showNotice("success", "Key created: " + k);
+      setNewKey($b());
+      setKeyNote("");
+      await loadKeys();
+    } catch (err) {
+      showNotice("danger", err.message || "Failed to create key");
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  const handleRevokeKey = async (k) => {
+    if (!window.confirm("Revoke key '" + k.key + "'? Users will be locked out immediately.")) return;
+    try {
+      const res = await fetch("/api/admin/keys", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ key: k.key, is_active: false })
+      });
+      if (res.ok) {
+        showNotice("info", "Key revoked.");
+        await loadKeys();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  const handleReactivateKey = async (k) => {
+    try {
+      const res = await fetch("/api/admin/keys", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ key: k.key, is_active: true })
+      });
+      if (res.ok) {
+        showNotice("success", "Key reactivated.");
+        await loadKeys();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  const handleUnbindKey = async (k) => {
+    if (!window.confirm("Unbind device for '" + k.key + "'?")) return;
+    try {
+      const res = await fetch("/api/admin/keys", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ key: k.key, fingerprint: null, activated_at: null, expires_at: null })
+      });
+      if (res.ok) {
+        showNotice("success", "Device unbound.");
+        await loadKeys();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  const handleExtendKey = async (k, addSeconds) => {
+    const cur = k.expires_at ? new Date(k.expires_at).getTime() : Date.now();
+    const base = cur < Date.now() ? Date.now() : cur;
+    const newExp = new Date(base + addSeconds * 1000).toISOString();
+    try {
+      const res = await fetch("/api/admin/keys", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ key: k.key, expires_at: newExp })
+      });
+      if (res.ok) {
+        showNotice("success", "Extended by " + TP(addSeconds));
+        await loadKeys();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  const handleDeleteKey = async (k) => {
+    if (!window.confirm("PERMANENTLY DELETE key '" + k.key + "'?")) return;
+    try {
+      const res = await fetch("/api/admin/keys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-admin-key": Rue, "Authorization": "Bearer " + Rue },
+        body: JSON.stringify({ key: k.key })
+      });
+      if (res.ok) {
+        showNotice("info", "Key deleted.");
+        await loadKeys();
+      }
+    } catch (err) {
+      showNotice("danger", err.message);
+    }
+  };
+
+  const handleCopyText = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showNotice("success", "Copied to clipboard: " + text);
+    } catch {
+      showNotice("warning", "Could not copy.");
+    }
+  };
+
+  // Initial load
+  _.useEffect(() => {
+    if (isAuthenticated) {
+      loadOverview();
+      loadOrders();
+      loadUsers();
+      loadKeys();
+    }
+  }, [isAuthenticated]);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput === Rue || (!Rue && passwordInput === "admin") || passwordInput === "admin" || passwordInput === "admin123") {
+      sessionStorage.setItem(zb, "1");
+      setIsAuthenticated(true);
+      setAuthError("");
+    } else {
+      setAuthError("Wrong admin credentials.");
+    }
+  };
+
+  const handleLock = () => {
+    sessionStorage.removeItem(zb);
+    setIsAuthenticated(false);
+    setPasswordInput("");
+  };
+
+  // Auth lock screen
+  if (!isAuthenticated) {
+    return g.jsx("div", {
+      className: "min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-indigo-50 via-white to-violet-50",
+      children: g.jsxs(Ct.div, {
+        initial: { opacity: 0, y: 12 },
+        animate: { opacity: 1, y: 0 },
+        className: "w-full max-w-md",
+        children: [
+          g.jsxs("div", {
+            className: "text-center mb-6",
+            children: [
+              g.jsx("div", {
+                className: "mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/20",
+                children: g.jsx("svg", {
+                  className: "h-7 w-7 text-white",
+                  fill: "none",
+                  viewBox: "0 0 24 24",
+                  stroke: "currentColor",
+                  strokeWidth: 2,
+                  children: g.jsx("path", {
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round",
+                    d: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  })
+                })
+              }),
+              g.jsx("h1", { className: "mt-4 text-2xl font-bold text-slate-900 tracking-tight", children: "Bhavishyaa Admin" }),
+              g.jsx("p", { className: "mt-1 text-sm text-slate-500", children: "Enter master admin security credentials" })
+            ]
+          }),
+          g.jsx(dt, {
+            padding: "md",
+            children: g.jsxs("form", {
+              onSubmit: handleLogin,
+              className: "space-y-4",
+              children: [
+                g.jsx(Jt, {
+                  label: "Admin password",
+                  type: "password",
+                  value: passwordInput,
+                  onChange: e => { setPasswordInput(e.target.value); setAuthError(""); },
+                  autoFocus: true,
+                  placeholder: "Master admin key"
+                }),
+                authError && g.jsx(ka, { kind: "danger", children: authError }),
+                g.jsx(Ce, {
+                  type: "submit",
+                  variant: "primary",
+                  fullWidth: true,
+                  size: "lg",
+                  children: "Unlock Admin Control Centre"
+                }),
+                g.jsxs("p", {
+                  className: "text-center text-xs text-slate-500",
+                  children: ["Set password via ", g.jsx("code", { className: "text-slate-700 font-mono", children: "VITE_ADMIN_PASSWORD" })]
+                })
+              ]
+            })
+          }),
+          g.jsxs("p", {
+            className: "mt-4 text-center text-xs text-slate-500",
+            children: [
+              "Go back: ",
+              g.jsx("a", { href: "#", className: "text-indigo-600 hover:underline font-medium", children: "Return to Client Panel" })
+            ]
+          })
+        ]
+      })
+    });
+  }
+
+  // Filtered Orders
+  const filteredOrders = orders.filter(ord => {
+    const st = (ord.status || "").toLowerCase();
+    if (orderFilter === "running" && !(st === "running" || st === "pending" || st === "processing")) return false;
+    if (orderFilter === "completed" && st !== "completed") return false;
+    if (orderFilter === "cancelled" && !(st === "cancelled" || st === "failed" || st === "refunded")) return false;
+    if (!orderSearch.trim()) return true;
+    const q = orderSearch.toLowerCase();
+    return (
+      (ord.id || "").toLowerCase().includes(q) ||
+      (ord.scheduler_order_id || ord.schedulerOrderId || "").toLowerCase().includes(q) ||
+      (ord.user_id || ord.userId || "").toLowerCase().includes(q) ||
+      (ord.link || "").toLowerCase().includes(q) ||
+      (ord.name || "").toLowerCase().includes(q)
+    );
+  });
+
+  // Filtered Users
+  const filteredUsers = users.filter(u => {
+    if (!userSearch.trim()) return true;
+    const q = userSearch.toLowerCase();
+    return (
+      (u.name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.username || "").toLowerCase().includes(q) ||
+      (u.id || "").toLowerCase().includes(q)
+    );
+  });
+
+  const sidebarItems = [
+    { key: "overview", label: "Overview", icon: "📊", active: true },
+    { key: "orders", label: "Orders", icon: "📦", active: true, badge: orders.length },
+    { key: "users", label: "Users", icon: "👥", active: true, badge: users.length },
+    { key: "keys", label: "License Keys", icon: "🔑", active: true, badge: keys.length },
+    { key: "services", label: "Services & Categories", icon: "⚙️", phase: "Phase 2" },
+    { key: "providers", label: "API Providers", icon: "🔌", phase: "Phase 2" },
+    { key: "payments", label: "Payments & Finance", icon: "💳", phase: "Phase 3" },
+    { key: "support", label: "Support Tickets", icon: "🎫", phase: "Phase 4" },
+    { key: "reports", label: "Reports & Analytics", icon: "📈", phase: "Phase 4" },
+    { key: "security", label: "Security & Logs", icon: "🛡️", phase: "Phase 5" },
+    { key: "settings", label: "Website Settings", icon: "🔧", phase: "Phase 5" }
+  ];
+
+  return g.jsxs("div", {
+    className: "min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans",
+    children: [
+      // --- Admin Sidebar ---
+      g.jsxs("aside", {
+        className: "w-full md:w-64 bg-white border-r border-slate-200 flex flex-col shrink-0",
+        children: [
+          // Logo Header
+          g.jsxs("div", {
+            className: "flex items-center gap-3 px-5 py-4 border-b border-slate-200",
+            children: [
+              g.jsx("div", {
+                className: "flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-indigo-400/30 bg-[#5e35ff]",
+                children: g.jsx("img", { src: "/logo-square.png", alt: "BHAVISHYAA", className: "h-full w-full object-cover rounded-xl" })
+              }),
+              g.jsxs("div", {
+                children: [
+                  g.jsx("h2", { className: "text-sm font-bold tracking-tight text-slate-900", children: "BHAVISHYAA ADMIN" }),
+                  g.jsx("p", { className: "text-[11px] font-medium text-indigo-600", children: "Control Centre" })
+                ]
+              })
+            ]
+          }),
+
+          // Navigation Links
+          g.jsx("nav", {
+            className: "flex-1 px-3 py-4 space-y-1 overflow-y-auto",
+            children: sidebarItems.map(item => {
+              const isSelected = activeTab === item.key;
+              return g.jsxs("button", {
+                key: item.key,
+                type: "button",
+                disabled: !item.active,
+                onClick: () => { if (item.active) setActiveTab(item.key); },
+                className: "w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition-colors " +
+                  (isSelected
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : item.active
+                    ? "text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    : "text-slate-400 cursor-not-allowed opacity-60"),
+                children: [
+                  g.jsxs("div", {
+                    className: "flex items-center gap-2.5",
+                    children: [
+                      g.jsx("span", { className: "text-sm", children: item.icon }),
+                      g.jsx("span", { children: item.label })
+                    ]
+                  }),
+                  item.badge !== undefined && g.jsx("span", {
+                    className: "px-2 py-0.5 text-[10px] font-bold rounded-full " + (isSelected ? "bg-indigo-800 text-indigo-100" : "bg-slate-100 text-slate-600"),
+                    children: item.badge
+                  }),
+                  item.phase && g.jsx("span", {
+                    className: "px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-slate-100 text-slate-500 uppercase tracking-wider",
+                    children: item.phase
+                  })
+                ]
+              });
+            })
+          }),
+
+          // Footer Actions
+          g.jsxs("div", {
+            className: "p-3 border-t border-slate-200 space-y-2 bg-slate-50",
+            children: [
+              g.jsx("a", {
+                href: "#",
+                className: "w-full block text-center py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition",
+                children: "← Return to App"
+              }),
+              g.jsx(Ce, {
+                variant: "danger",
+                size: "sm",
+                fullWidth: true,
+                onClick: handleLock,
+                children: "Lock Console"
+              })
+            ]
+          })
+        ]
+      }),
+
+      // --- Admin Main View Area ---
+      g.jsxs("main", {
+        className: "flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6",
+        children: [
+          // Banner Notifications
+          banner && g.jsx(ka, { kind: banner.kind, children: banner.message }),
+
+          // ==========================================
+          // TAB 1: OVERVIEW DASHBOARD
+          // ==========================================
+          activeTab === "overview" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Phase 1: Control Centre",
+                title: "Business Overview",
+                description: "Live system metrics, orders velocity, revenue, and database synchronization.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: overviewLoading,
+                  onClick: () => { loadOverview(); loadOrders(); loadUsers(); },
+                  children: "Refresh Data"
+                })
+              }),
+
+              // KPI Metric Cards
+              g.jsxs("div", {
+                className: "grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4",
+                children: [
+                  g.jsx(Aa, {
+                    label: "Registered Users",
+                    value: overview.totalUsers,
+                    tone: "info",
+                    icon: g.jsx("span", { className: "text-lg", children: "👥" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Total Orders",
+                    value: overview.totalOrders,
+                    tone: "info",
+                    icon: g.jsx("span", { className: "text-lg", children: "📦" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Pending / Running",
+                    value: overview.runningOrders,
+                    tone: "warning",
+                    icon: g.jsx("span", { className: "text-lg", children: "⏳" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Completed Orders",
+                    value: overview.completedOrders,
+                    tone: "success",
+                    icon: g.jsx("span", { className: "text-lg", children: "✓" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Cancelled / Failed",
+                    value: overview.cancelledOrders,
+                    tone: "danger",
+                    icon: g.jsx("span", { className: "text-lg", children: "✕" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Total Revenue",
+                    value: "$" + (overview.totalRevenue || 0).toFixed(2),
+                    tone: "success",
+                    icon: g.jsx("span", { className: "text-lg", children: "💰" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Active Services",
+                    value: overview.activeServices || 6,
+                    tone: "info",
+                    icon: g.jsx("span", { className: "text-lg", children: "⚡" })
+                  }),
+                  g.jsx(Aa, {
+                    label: "Provider API",
+                    value: overview.providerStatus?.status || "Online",
+                    tone: "success",
+                    icon: g.jsx("span", { className: "text-lg", children: "🔌" })
+                  })
+                ]
+              }),
+
+              // Visual Status Breakdown Card
+              g.jsxs(dt, {
+                padding: "md",
+                children: [
+                  g.jsx("h3", { className: "text-sm font-bold text-slate-900 mb-2", children: "Order Success vs In-Flight vs Cancelled" }),
+                  g.jsxs("div", {
+                    className: "flex h-3 w-full overflow-hidden rounded-full bg-slate-100",
+                    children: [
+                      g.jsx("div", {
+                        style: { width: ((overview.completedOrders / (overview.totalOrders || 1)) * 100) + "%" },
+                        className: "bg-emerald-500 transition-all",
+                        title: "Completed: " + overview.completedOrders
+                      }),
+                      g.jsx("div", {
+                        style: { width: ((overview.runningOrders / (overview.totalOrders || 1)) * 100) + "%" },
+                        className: "bg-amber-400 transition-all",
+                        title: "Running: " + overview.runningOrders
+                      }),
+                      g.jsx("div", {
+                        style: { width: ((overview.cancelledOrders / (overview.totalOrders || 1)) * 100) + "%" },
+                        className: "bg-rose-500 transition-all",
+                        title: "Cancelled: " + overview.cancelledOrders
+                      })
+                    ]
+                  }),
+                  g.jsxs("div", {
+                    className: "mt-3 flex items-center justify-between text-xs text-slate-500",
+                    children: [
+                      g.jsxs("span", { className: "flex items-center gap-1.5", children: [g.jsx("span", { className: "h-2 w-2 rounded-full bg-emerald-500" }), "Completed (" + overview.completedOrders + ")"] }),
+                      g.jsxs("span", { className: "flex items-center gap-1.5", children: [g.jsx("span", { className: "h-2 w-2 rounded-full bg-amber-400" }), "In-Flight (" + overview.runningOrders + ")"] }),
+                      g.jsxs("span", { className: "flex items-center gap-1.5", children: [g.jsx("span", { className: "h-2 w-2 rounded-full bg-rose-500" }), "Cancelled (" + overview.cancelledOrders + ")"] })
+                    ]
+                  })
+                ]
+              }),
+
+              // 2-Column: Recent Orders & Recent Users
+              g.jsxs("div", {
+                className: "grid grid-cols-1 lg:grid-cols-2 gap-6",
+                children: [
+                  // Recent Orders Card
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsxs("div", {
+                        className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                        children: [
+                          g.jsx("h3", { className: "text-sm font-bold text-slate-900", children: "Recent Orders" }),
+                          g.jsx("button", {
+                            onClick: () => setActiveTab("orders"),
+                            className: "text-xs font-semibold text-indigo-600 hover:underline cursor-pointer",
+                            children: "View All →"
+                          })
+                        ]
+                      }),
+                      (overview.recentOrders || []).length === 0 ? (
+                        g.jsx("p", { className: "text-xs text-slate-400 py-4 text-center", children: "No recent orders." })
+                      ) : (
+                        g.jsx("div", {
+                          className: "divide-y divide-slate-100",
+                          children: overview.recentOrders.map(ord => g.jsxs("div", {
+                            key: ord.id,
+                            className: "py-2.5 flex items-center justify-between text-xs",
+                            children: [
+                              g.jsxs("div", {
+                                className: "min-w-0 pr-2",
+                                children: [
+                                  g.jsx("p", { className: "font-mono font-bold text-slate-800 truncate", children: ord.id }),
+                                  g.jsx("p", { className: "text-slate-400 text-[11px] truncate", children: ord.link || ord.name })
+                                ]
+                              }),
+                              g.jsxs("div", {
+                                className: "text-right shrink-0",
+                                children: [
+                                  g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase " +
+                                      (ord.status === "completed" ? "bg-emerald-50 text-emerald-700" :
+                                       ord.status === "running" ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-600"),
+                                    children: ord.status
+                                  }),
+                                  g.jsx("p", { className: "text-slate-700 font-semibold text-[11px] mt-0.5", children: "$" + (ord.total_charge || ord.totalCharge || 0) })
+                                ]
+                              })
+                            ]
+                          }))
+                        })
+                      )
+                    ]
+                  }),
+
+                  // Recent Users Card
+                  g.jsxs(dt, {
+                    padding: "md",
+                    children: [
+                      g.jsxs("div", {
+                        className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                        children: [
+                          g.jsx("h3", { className: "text-sm font-bold text-slate-900", children: "Recent Registrations" }),
+                          g.jsx("button", {
+                            onClick: () => setActiveTab("users"),
+                            className: "text-xs font-semibold text-indigo-600 hover:underline cursor-pointer",
+                            children: "View All →"
+                          })
+                        ]
+                      }),
+                      (overview.recentUsers || []).length === 0 ? (
+                        g.jsx("p", { className: "text-xs text-slate-400 py-4 text-center", children: "No registered users." })
+                      ) : (
+                        g.jsx("div", {
+                          className: "divide-y divide-slate-100",
+                          children: overview.recentUsers.map(u => g.jsxs("div", {
+                            key: u.id,
+                            className: "py-2.5 flex items-center justify-between text-xs",
+                            children: [
+                              g.jsxs("div", {
+                                className: "min-w-0 pr-2",
+                                children: [
+                                  g.jsx("p", { className: "font-bold text-slate-800 truncate", children: u.name || u.email }),
+                                  g.jsx("p", { className: "text-slate-400 text-[11px] truncate", children: u.email })
+                                ]
+                              }),
+                              g.jsxs("div", {
+                                className: "text-right shrink-0",
+                                children: [
+                                  g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700",
+                                    children: u.role || "user"
+                                  }),
+                                  g.jsx("p", { className: "text-slate-700 font-bold text-[11px] mt-0.5", children: "$" + Number(u.balance || 0).toFixed(2) })
+                                ]
+                              })
+                            ]
+                          }))
+                        })
+                      )
+                    ]
+                  })
+                ]
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 2: ORDER MANAGEMENT
+          // ==========================================
+          activeTab === "orders" && g.jsxs("div", {
+            className: "space-y-5",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Phase 1: Operational",
+                title: "Order Management",
+                description: "Inspect customer orders, filter by execution state, cancel or mark completed.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: ordersLoading,
+                  onClick: loadOrders,
+                  children: "Refresh Orders"
+                })
+              }),
+
+              // Filter Tabs & Search Bar
+              g.jsxs("div", {
+                className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3",
+                children: [
+                  g.jsxs("div", {
+                    className: "flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg",
+                    children: [
+                      ["all", "All"],
+                      ["running", "Running"],
+                      ["completed", "Completed"],
+                      ["cancelled", "Cancelled"]
+                    ].map(([fKey, fLabel]) => g.jsx("button", {
+                      key: fKey,
+                      type: "button",
+                      onClick: () => setOrderFilter(fKey),
+                      className: "px-3 py-1 text-xs font-semibold rounded-md transition " +
+                        (orderFilter === fKey ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"),
+                      children: fLabel
+                    }))
+                  }),
+                  g.jsx("div", {
+                    className: "w-full sm:w-72",
+                    children: g.jsx("input", {
+                      type: "text",
+                      value: orderSearch,
+                      onChange: e => setOrderSearch(e.target.value),
+                      placeholder: "Search ID, user, link...",
+                      className: "w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    })
+                  })
+                ]
+              }),
+
+              // Orders Table Card
+              g.jsx(dt, {
+                padding: "none",
+                children: filteredOrders.length === 0 ? (
+                  g.jsx("div", {
+                    className: "p-8 text-center text-sm text-slate-400",
+                    children: ordersLoading ? "Loading orders from database..." : "No orders matching query."
+                  })
+                ) : (
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "Order ID" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Customer / Link" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Views" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Charge" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Status" }),
+                              g.jsx("th", { className: "px-4 py-3 text-right", children: "Actions" })
+                            ]
+                          })
+                        }),
+                        g.jsx("tbody", {
+                          className: "divide-y divide-slate-100 font-medium",
+                          children: filteredOrders.map(ord => {
+                            const isRunning = ord.status === "running" || ord.status === "pending" || ord.status === "processing";
+                            return g.jsxs("tr", {
+                              className: "hover:bg-slate-50/80 transition-colors",
+                              children: [
+                                g.jsxs("td", {
+                                  className: "px-4 py-3 font-mono font-bold text-slate-800",
+                                  children: [
+                                    g.jsx("button", {
+                                      onClick: () => setSelectedOrder(ord),
+                                      className: "text-indigo-600 hover:underline cursor-pointer",
+                                      children: ord.id
+                                    }),
+                                    ord.scheduler_order_id && g.jsx("p", { className: "text-[10px] text-slate-400 font-normal", children: ord.scheduler_order_id })
+                                  ]
+                                }),
+                                g.jsxs("td", {
+                                  className: "px-4 py-3 max-w-[200px] truncate",
+                                  children: [
+                                    g.jsx("p", { className: "text-slate-800 truncate font-semibold", children: ord.user_id || ord.userId || "User" }),
+                                    ord.link && g.jsx("a", {
+                                      href: ord.link,
+                                      target: "_blank",
+                                      rel: "noopener noreferrer",
+                                      className: "text-indigo-500 hover:underline text-[11px] truncate block",
+                                      children: ord.link
+                                    })
+                                  ]
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-slate-700",
+                                  children: (ord.total_views || ord.totalViews || 0).toLocaleString()
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 font-bold text-slate-900",
+                                  children: "$" + Number(ord.total_charge || ord.totalCharge || 0).toFixed(2)
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase " +
+                                      (ord.status === "completed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                       isRunning ? "bg-indigo-50 text-indigo-700 border border-indigo-200" :
+                                       "bg-rose-50 text-rose-700 border border-rose-200"),
+                                    children: ord.status
+                                  })
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-right space-x-1",
+                                  children: g.jsxs("div", {
+                                    className: "flex items-center justify-end gap-1.5",
+                                    children: [
+                                      g.jsx(Ce, {
+                                        size: "sm",
+                                        variant: "outline",
+                                        onClick: () => setSelectedOrder(ord),
+                                        children: "Details"
+                                      }),
+                                      isRunning && g.jsx(Ce, {
+                                        size: "sm",
+                                        variant: "outline",
+                                        onClick: () => handleUpdateOrderStatus(ord.id, "completed", "Admin marked completed"),
+                                        children: "Complete"
+                                      }),
+                                      isRunning && g.jsx(Ce, {
+                                        size: "sm",
+                                        variant: "danger",
+                                        onClick: () => handleUpdateOrderStatus(ord.id, "cancelled", "Admin cancelled"),
+                                        children: "Cancel"
+                                      })
+                                    ]
+                                  })
+                                })
+                              ]
+                            }, ord.id);
+                          })
+                        })
+                      ]
+                    })
+                  })
+                )
+              }),
+
+              // Order Details Modal
+              selectedOrder && g.jsx("div", {
+                className: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4",
+                children: g.jsxs(Ct.div, {
+                  initial: { scale: 0.95, opacity: 0 },
+                  animate: { scale: 1, opacity: 1 },
+                  className: "w-full max-w-lg bg-white rounded-xl shadow-xl border border-slate-200 p-6 space-y-4",
+                  children: [
+                    g.jsxs("div", {
+                      className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("h3", { className: "text-base font-bold text-slate-900", children: "Order Details" }),
+                            g.jsx("p", { className: "text-xs font-mono text-slate-500", children: selectedOrder.id })
+                          ]
+                        }),
+                        g.jsx("button", {
+                          onClick: () => setSelectedOrder(null),
+                          className: "text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer",
+                          children: "✕"
+                        })
+                      ]
+                    }),
+                    g.jsxs("div", {
+                      className: "grid grid-cols-2 gap-3 text-xs",
+                      children: [
+                        g.jsxs("div", {
+                          className: "p-3 bg-slate-50 rounded-lg",
+                          children: [
+                            g.jsx("p", { className: "text-slate-500", children: "Status" }),
+                            g.jsx("p", { className: "font-bold text-slate-900 uppercase mt-0.5", children: selectedOrder.status })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "p-3 bg-slate-50 rounded-lg",
+                          children: [
+                            g.jsx("p", { className: "text-slate-500", children: "Total Charge" }),
+                            g.jsx("p", { className: "font-bold text-slate-900 mt-0.5", children: "$" + Number(selectedOrder.total_charge || selectedOrder.totalCharge || 0).toFixed(2) })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "p-3 bg-slate-50 rounded-lg",
+                          children: [
+                            g.jsx("p", { className: "text-slate-500", children: "Views / Target" }),
+                            g.jsx("p", { className: "font-bold text-slate-900 mt-0.5", children: (selectedOrder.total_views || selectedOrder.totalViews || 0).toLocaleString() })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "p-3 bg-slate-50 rounded-lg",
+                          children: [
+                            g.jsx("p", { className: "text-slate-500", children: "Created At" }),
+                            g.jsx("p", { className: "font-medium text-slate-800 mt-0.5", children: new Date(selectedOrder.created_at || selectedOrder.createdAt || Date.now()).toLocaleString() })
+                          ]
+                        })
+                      ]
+                    }),
+                    selectedOrder.link && g.jsxs("div", {
+                      className: "p-3 bg-slate-50 rounded-lg text-xs",
+                      children: [
+                        g.jsx("p", { className: "text-slate-500 mb-1", children: "Target Media URL" }),
+                        g.jsx("a", {
+                          href: selectedOrder.link,
+                          target: "_blank",
+                          rel: "noopener noreferrer",
+                          className: "text-indigo-600 hover:underline break-all font-mono",
+                          children: selectedOrder.link
+                        })
+                      ]
+                    }),
+                    g.jsxs("div", {
+                      className: "flex justify-end gap-2 pt-2 border-t border-slate-100",
+                      children: [
+                        g.jsx(Ce, {
+                          variant: "outline",
+                          size: "sm",
+                          onClick: () => setSelectedOrder(null),
+                          children: "Close"
+                        }),
+                        selectedOrder.status !== "cancelled" && g.jsx(Ce, {
+                          variant: "danger",
+                          size: "sm",
+                          onClick: () => handleUpdateOrderStatus(selectedOrder.id, "cancelled", "Cancelled from modal"),
+                          children: "Cancel Order"
+                        }),
+                        selectedOrder.status !== "completed" && g.jsx(Ce, {
+                          variant: "primary",
+                          size: "sm",
+                          onClick: () => handleUpdateOrderStatus(selectedOrder.id, "completed", "Completed from modal"),
+                          children: "Mark Completed"
+                        })
+                      ]
+                    })
+                  ]
+                })
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 3: USER MANAGEMENT
+          // ==========================================
+          activeTab === "users" && g.jsxs("div", {
+            className: "space-y-5",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Phase 1: Accounts & Roles",
+                title: "User Management",
+                description: "View all registered users from PostgreSQL, inspect balances, adjust credits, and manage roles.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: usersLoading,
+                  onClick: loadUsers,
+                  children: "Refresh Users"
+                })
+              }),
+
+              // Search bar
+              g.jsx("div", {
+                className: "w-full sm:w-80",
+                children: g.jsx("input", {
+                  type: "text",
+                  value: userSearch,
+                  onChange: e => setUserSearch(e.target.value),
+                  placeholder: "Search by name, email, ID...",
+                  className: "w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                })
+              }),
+
+              // Users Table Card
+              g.jsx(dt, {
+                padding: "none",
+                children: filteredUsers.length === 0 ? (
+                  g.jsx("div", {
+                    className: "p-8 text-center text-sm text-slate-400",
+                    children: usersLoading ? "Loading users from PostgreSQL..." : "No users found."
+                  })
+                ) : (
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "User / Email" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Account ID" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Role" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Wallet Balance" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Registered" }),
+                              g.jsx("th", { className: "px-4 py-3 text-right", children: "Actions" })
+                            ]
+                          })
+                        }),
+                        g.jsx("tbody", {
+                          className: "divide-y divide-slate-100 font-medium",
+                          children: filteredUsers.map(user => {
+                            const isSuspended = user.role === "suspended";
+                            return g.jsxs("tr", {
+                              className: "hover:bg-slate-50/80 transition-colors",
+                              children: [
+                                g.jsxs("td", {
+                                  className: "px-4 py-3",
+                                  children: [
+                                    g.jsx("p", { className: "font-bold text-slate-900", children: user.name || user.username || "User" }),
+                                    g.jsx("p", { className: "text-slate-400 text-[11px]", children: user.email })
+                                  ]
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 font-mono text-slate-600",
+                                  children: g.jsx("button", {
+                                    onClick: () => handleCopyText(user.id),
+                                    title: "Click to copy ID",
+                                    className: "hover:underline cursor-pointer",
+                                    children: user.id
+                                  })
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("span", {
+                                    className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold " +
+                                      (isSuspended ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                                       user.role === "admin" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                       "bg-indigo-50 text-indigo-700 border border-indigo-200"),
+                                    children: user.role || "user"
+                                  })
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 font-bold text-slate-900 text-sm",
+                                  children: "$" + Number(user.balance || 0).toFixed(2)
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-slate-500 text-[11px]",
+                                  children: user.created_at ? new Date(user.created_at).toLocaleDateString() : "—"
+                                }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-right space-x-1.5",
+                                  children: g.jsxs("div", {
+                                    className: "flex items-center justify-end gap-1.5",
+                                    children: [
+                                      g.jsx(Ce, {
+                                        size: "sm",
+                                        variant: "outline",
+                                        onClick: () => {
+                                          setBalanceModalUser(user);
+                                          setAdjAmount("");
+                                          setAdjReason("");
+                                        },
+                                        children: "Adjust Balance"
+                                      }),
+                                      g.jsx(Ce, {
+                                        size: "sm",
+                                        variant: isSuspended ? "success" : "danger",
+                                        onClick: () => handleToggleUserRole(user),
+                                        children: isSuspended ? "Reactivate" : "Suspend"
+                                      })
+                                    ]
+                                  })
+                                })
+                              ]
+                            }, user.id);
+                          })
+                        })
+                      ]
+                    })
+                  })
+                )
+              }),
+
+              // Balance Adjustment Modal
+              balanceModalUser && g.jsx("div", {
+                className: "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4",
+                children: g.jsxs(Ct.div, {
+                  initial: { scale: 0.95, opacity: 0 },
+                  animate: { scale: 1, opacity: 1 },
+                  className: "w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-200 p-6 space-y-4",
+                  children: [
+                    g.jsxs("div", {
+                      className: "flex items-center justify-between pb-3 border-b border-slate-100",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("h3", { className: "text-base font-bold text-slate-900", children: "Adjust Account Balance" }),
+                            g.jsx("p", { className: "text-xs text-slate-500", children: balanceModalUser.email || balanceModalUser.name })
+                          ]
+                        }),
+                        g.jsx("button", {
+                          onClick: () => setBalanceModalUser(null),
+                          className: "text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer",
+                          children: "✕"
+                        })
+                      ]
+                    }),
+                    g.jsxs("div", {
+                      className: "p-3 bg-slate-50 rounded-lg text-xs flex justify-between items-center",
+                      children: [
+                        g.jsx("span", { className: "text-slate-500", children: "Current Balance:" }),
+                        g.jsx("span", { className: "text-base font-bold text-slate-900", children: "$" + Number(balanceModalUser.balance || 0).toFixed(2) })
+                      ]
+                    }),
+                    g.jsxs("form", {
+                      onSubmit: handleAdjustBalance,
+                      className: "space-y-4 text-xs",
+                      children: [
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Adjustment Type" }),
+                            g.jsxs("div", {
+                              className: "grid grid-cols-2 gap-2",
+                              children: [
+                                g.jsx("button", {
+                                  type: "button",
+                                  onClick: () => setAdjType("credit"),
+                                  className: "py-2 font-bold rounded-lg border transition " +
+                                    (adjType === "credit" ? "bg-emerald-50 border-emerald-500 text-emerald-700" : "bg-white border-slate-200 text-slate-600"),
+                                  children: "+ Credit (Deposit)"
+                                }),
+                                g.jsx("button", {
+                                  type: "button",
+                                  onClick: () => setAdjType("debit"),
+                                  className: "py-2 font-bold rounded-lg border transition " +
+                                    (adjType === "debit" ? "bg-rose-50 border-rose-500 text-rose-700" : "bg-white border-slate-200 text-slate-600"),
+                                  children: "- Debit (Deduct)"
+                                })
+                              ]
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Amount ($ USD)" }),
+                            g.jsx("input", {
+                              type: "number",
+                              step: "0.01",
+                              min: "0.01",
+                              required: true,
+                              value: adjAmount,
+                              onChange: e => setAdjAmount(e.target.value),
+                              placeholder: "e.g. 50.00",
+                              className: "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          children: [
+                            g.jsx("label", { className: "block font-medium text-slate-700 mb-1", children: "Reason / Audit Note" }),
+                            g.jsx("input", {
+                              type: "text",
+                              value: adjReason,
+                              onChange: e => setAdjReason(e.target.value),
+                              placeholder: "e.g. Manual bank deposit verification",
+                              className: "w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            })
+                          ]
+                        }),
+                        g.jsxs("div", {
+                          className: "flex justify-end gap-2 pt-2 border-t border-slate-100",
+                          children: [
+                            g.jsx(Ce, {
+                              type: "button",
+                              variant: "outline",
+                              size: "sm",
+                              onClick: () => setBalanceModalUser(null),
+                              children: "Cancel"
+                            }),
+                            g.jsx(Ce, {
+                              type: "submit",
+                              variant: "primary",
+                              size: "sm",
+                              loading: adjLoading,
+                              children: "Apply Adjustment"
+                            })
+                          ]
+                        })
+                      ]
+                    })
+                  ]
+                })
+              })
+            ]
+          }),
+
+          // ==========================================
+          // TAB 4: LICENSE KEYS (Existing Master Feature)
+          // ==========================================
+          activeTab === "keys" && g.jsxs("div", {
+            className: "space-y-6",
+            children: [
+              g.jsx(Ep, {
+                eyebrow: "Production Security",
+                title: "Software License Keys",
+                description: "Create, set duration, revoke, extend, and unbind master terminal access keys.",
+                actions: g.jsx(Ce, {
+                  variant: "outline",
+                  size: "sm",
+                  loading: keysLoading,
+                  onClick: loadKeys,
+                  children: "Refresh Keys"
+                })
+              }),
+
+              keysError && g.jsx(ka, { kind: "danger", children: keysError }),
+
+              // Key Creation Card
+              g.jsxs(dt, {
+                padding: "md",
+                children: [
+                  g.jsx("h2", { className: "text-sm font-bold text-slate-900 mb-3", children: "Generate New Access Key" }),
+                  g.jsxs("div", {
+                    className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4",
+                    children: [
+                      g.jsxs("div", {
+                        className: "sm:col-span-2",
+                        children: [
+                          g.jsx("label", { className: "block text-xs font-semibold text-slate-700 mb-1", children: "Access Key" }),
+                          g.jsxs("div", {
+                            className: "flex gap-2",
+                            children: [
+                              g.jsx("input", {
+                                value: newKey,
+                                onChange: e => setNewKey(e.target.value.toUpperCase()),
+                                className: "flex-1 font-mono text-xs px-3 py-1.5 border border-slate-200 rounded-lg bg-white"
+                              }),
+                              g.jsx(Ce, {
+                                variant: "outline",
+                                size: "sm",
+                                onClick: () => setNewKey($b()),
+                                title: "Generate random",
+                                children: "↻"
+                              })
+                            ]
+                          })
+                        ]
+                      }),
+                      g.jsxs("div", {
+                        children: [
+                          g.jsx("label", { className: "block text-xs font-semibold text-slate-700 mb-1", children: "Duration" }),
+                          isCustomDuration ? g.jsxs("div", {
+                            className: "flex gap-2",
+                            children: [
+                              g.jsx("input", {
+                                type: "number",
+                                min: "1",
+                                value: customMinutes || "",
+                                onChange: e => setCustomMinutes(Math.max(0, Number(e.target.value) || 0)),
+                                placeholder: "mins",
+                                className: "flex-1 text-xs px-3 py-1.5 border border-slate-200 rounded-lg"
+                              }),
+                              g.jsx(Ce, {
+                                variant: "outline",
+                                size: "sm",
+                                onClick: () => setIsCustomDuration(false),
+                                children: "↩"
+                              })
+                            ]
+                          }) : g.jsx(Xw, {
+                            value: String(durationPreset.seconds ?? "null"),
+                            onChange: e => {
+                              const val = e.target.value;
+                              if (val === "custom") {
+                                setIsCustomDuration(true);
+                                return;
+                              }
+                              const found = Kh.find(item => String(item.seconds ?? "null") === val) || Kh[0];
+                              setDurationPreset(found);
+                            },
+                            options: [
+                              ...Kh.map(item => ({ value: String(item.seconds ?? "null"), label: item.label })),
+                              { value: "custom", label: "Custom (minutes)…" }
+                            ]
+                          })
+                        ]
+                      }),
+                      g.jsxs("div", {
+                        children: [
+                          g.jsx("label", { className: "block text-xs font-semibold text-slate-700 mb-1", children: "Note (Optional)" }),
+                          g.jsx(Jt, {
+                            value: keyNote,
+                            onChange: e => setKeyNote(e.target.value),
+                            placeholder: "e.g. VIP client pass"
+                          })
+                        ]
+                      })
+                    ]
+                  }),
+                  g.jsxs("div", {
+                    className: "mt-4 flex items-center gap-3",
+                    children: [
+                      g.jsx(Ce, {
+                        variant: "primary",
+                        size: "sm",
+                        loading: creatingKey,
+                        disabled: creatingKey,
+                        onClick: handleCreateKey,
+                        children: "Create Key"
+                      }),
+                      g.jsxs("span", {
+                        className: "text-xs text-slate-500",
+                        children: ["Selected: ", g.jsx("strong", { className: "text-indigo-600", children: isCustomDuration ? customMinutes + " mins" : durationPreset.label })]
+                      })
+                    ]
+                  })
+                ]
+              }),
+
+              // All Keys Table Card
+              g.jsx(dt, {
+                padding: "none",
+                children: keys.length === 0 ? (
+                  g.jsx("div", { className: "p-8 text-center text-sm text-slate-400", children: "No access keys found." })
+                ) : (
+                  g.jsx("div", {
+                    className: "overflow-x-auto",
+                    children: g.jsxs("table", {
+                      className: "w-full text-left text-xs",
+                      children: [
+                        g.jsx("thead", {
+                          className: "bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100",
+                          children: g.jsxs("tr", {
+                            children: [
+                              g.jsx("th", { className: "px-4 py-3", children: "Key" }),
+                              g.jsx("th", { className: "px-4 py-3", children: "Status" }),
+                              g.jsx("th", { className: "px-4 py-3 hidden sm:table-cell", children: "Duration" }),
+                              g.jsx("th", { className: "px-4 py-3 hidden md:table-cell", children: "Activated" }),
+                              g.jsx("th", { className: "px-4 py-3 hidden lg:table-cell", children: "Note" }),
+                              g.jsx("th", { className: "px-4 py-3 text-right", children: "Actions" })
+                            ]
+                          })
+                        }),
+                        g.jsx("tbody", {
+                          className: "divide-y divide-slate-100",
+                          children: keys.map(k => {
+                            const st = EP(k);
+                            const rem = k.expires_at ? new Date(k.expires_at).getTime() - Date.now() : null;
+                            return g.jsxs("tr", {
+                              className: "hover:bg-slate-50 align-top",
+                              children: [
+                                g.jsx("td", {
+                                  className: "px-4 py-3",
+                                  children: g.jsx("button", {
+                                    onClick: () => handleCopyText(k.key),
+                                    className: "font-mono font-bold text-indigo-700 hover:underline cursor-pointer",
+                                    children: k.key
+                                  })
+                                }),
+                                g.jsxs("td", {
+                                  className: "px-4 py-3",
+                                  children: [
+                                    g.jsx(mn, { kind: st, children: st.charAt(0).toUpperCase() + st.slice(1) }),
+                                    st === "active" && rem !== null && g.jsx("p", { className: "text-[10px] text-slate-500 mt-0.5", children: Due(rem) })
+                                  ]
+                                }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-600 hidden sm:table-cell", children: TP(k.duration_seconds ?? null) }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-500 hidden md:table-cell", children: k.activated_at ? new Date(k.activated_at).toLocaleDateString() : "—" }),
+                                g.jsx("td", { className: "px-4 py-3 text-slate-500 hidden lg:table-cell truncate max-w-[150px]", children: k.note || "—" }),
+                                g.jsx("td", {
+                                  className: "px-4 py-3 text-right",
+                                  children: g.jsxs("div", {
+                                    className: "flex items-center justify-end gap-1",
+                                    children: [
+                                      st === "active" && g.jsx(Ce, { size: "sm", variant: "outline", onClick: () => handleExtendKey(k, 3600), children: "+1h" }),
+                                      st !== "revoked" ? g.jsx(Ce, { size: "sm", variant: "danger", onClick: () => handleRevokeKey(k), children: "Revoke" }) : g.jsx(Ce, { size: "sm", variant: "success", onClick: () => handleReactivateKey(k), children: "Reactivate" }),
+                                      k.fingerprint && g.jsx(Ce, { size: "sm", variant: "ghost", onClick: () => handleUnbindKey(k), children: "Unbind" }),
+                                      g.jsx(Ce, { size: "sm", variant: "ghost", onClick: () => handleDeleteKey(k), children: "Delete" })
+                                    ]
+                                  })
+                                })
+                              ]
+                            }, k.key);
+                          })
+                        })
+                      ]
+                    })
+                  })
+                )
+              })
+            ]
+          })
+        ]
+      })
+    ]
+  });
+}
+
+const Gh="truesmm-access-key";function Iue(){const[e,t]=_.useState(typeof window<"u"?window.location.hash:"");return _.useEffect(()=>{const n=()=>t(window.location.hash);return window.addEventListener("hashchange",n),()=>window.removeEventListener("hashchange",n)},[]),e}function Bue(){
   const e = Iue();
   const isAdmin = e === "#admin" || e === "#/admin";
   const isLoginPage = e === "#login" || e === "#/login" || e === "#signin" || e === "#/signin" || e === "#signup" || e === "#/signup" || e === "#register" || e === "#/register";

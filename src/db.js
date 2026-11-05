@@ -502,5 +502,256 @@ export class DatabaseManager {
       console.warn('[DB] Supabase saveOrder error:', err.message);
     }
   }
-}
 
+  /**
+   * Admin Overview Metrics (Phase 1)
+   */
+  async getAdminOverview() {
+    let usersCount = 0;
+    let ordersCount = 0;
+    let runningOrders = 0;
+    let completedOrders = 0;
+    let cancelledOrders = 0;
+    let totalRevenue = 0;
+    let recentOrders = [];
+    let recentUsers = [];
+
+    // 1. Fetch Users from Supabase
+    if (this.supabaseClient) {
+      try {
+        const { data: users, error: uErr } = await this.supabaseClient
+          .from('users')
+          .select('id, name, username, email, role, balance, created_at')
+          .order('created_at', { ascending: false });
+        if (!uErr && Array.isArray(users)) {
+          usersCount = users.length;
+          recentUsers = users.slice(0, 5);
+        }
+      } catch (err) {
+        console.warn('[DB] Supabase admin users query failed:', err.message);
+      }
+    }
+    if (usersCount === 0) {
+      const localUsers = Object.values(this.localDb.users || {});
+      usersCount = localUsers.length;
+      recentUsers = localUsers.slice(0, 5);
+    }
+
+    // 2. Fetch Orders from Supabase
+    if (this.supabaseClient) {
+      try {
+        const { data: orders, error: oErr } = await this.supabaseClient
+          .from('orders')
+          .select('id, scheduler_order_id, user_id, name, link, status, total_views, total_charge, currency, created_at')
+          .order('created_at', { ascending: false });
+        if (!oErr && Array.isArray(orders)) {
+          ordersCount = orders.length;
+          recentOrders = orders.slice(0, 5);
+          for (const ord of orders) {
+            const st = (ord.status || '').toLowerCase();
+            if (st === 'running' || st === 'pending' || st === 'processing') runningOrders++;
+            else if (st === 'completed') completedOrders++;
+            else if (st === 'cancelled' || st === 'failed' || st === 'refunded') cancelledOrders++;
+            totalRevenue += Number(ord.total_charge || 0);
+          }
+        }
+      } catch (err) {
+        console.warn('[DB] Supabase admin orders query failed:', err.message);
+      }
+    }
+    if (ordersCount === 0) {
+      const localOrders = Object.values(this.localDb.orders || {});
+      ordersCount = localOrders.length;
+      recentOrders = localOrders.slice(0, 5);
+      for (const ord of localOrders) {
+        const st = (ord.status || '').toLowerCase();
+        if (st === 'running' || st === 'pending' || st === 'processing') runningOrders++;
+        else if (st === 'completed') completedOrders++;
+        else if (st === 'cancelled' || st === 'failed' || st === 'refunded') cancelledOrders++;
+        totalRevenue += Number(ord.totalCharge || 0);
+      }
+    }
+
+    return {
+      totalUsers: usersCount,
+      totalOrders: ordersCount,
+      runningOrders,
+      completedOrders,
+      cancelledOrders,
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      activeServices: 6,
+      providerStatus: {
+        name: 'YOYO SMM API',
+        url: 'https://yoyosmm.com/api/v2',
+        status: 'Online',
+        connected: true
+      },
+      recentOrders,
+      recentUsers
+    };
+  }
+
+  /**
+   * Admin Orders List (Phase 1)
+   */
+  async getAdminOrders() {
+    if (this.supabaseClient) {
+      try {
+        const { data: orders, error } = await this.supabaseClient
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && Array.isArray(orders) && orders.length > 0) {
+          return orders;
+        }
+      } catch (err) {
+        console.warn('[DB] Supabase getAdminOrders error:', err.message);
+      }
+    }
+    return Object.values(this.localDb.orders || []).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+
+  /**
+   * Admin Update Order Status (Phase 1)
+   */
+  async updateAdminOrderStatus(orderId, status, reason = '') {
+    const cleanId = String(orderId).trim();
+    const cleanStatus = String(status).trim().toLowerCase();
+
+    // 1. Update in localDb
+    if (this.localDb.orders && this.localDb.orders[cleanId]) {
+      this.localDb.orders[cleanId].status = cleanStatus;
+      this.localDb.orders[cleanId].lastUpdatedAt = new Date().toISOString();
+      this.saveLocalDB();
+    }
+
+    // 2. Update in Supabase
+    if (this.supabaseClient) {
+      try {
+        await this.supabaseClient
+          .from('orders')
+          .update({ status: cleanStatus, updated_at: new Date().toISOString() })
+          .eq('id', cleanId);
+
+        // Also record audit log
+        await this.supabaseClient.from('audit_logs').insert({
+          user_id: 'admin',
+          action: 'order_status_update',
+          details: { orderId: cleanId, status: cleanStatus, reason },
+          created_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('[DB] Supabase updateAdminOrderStatus error:', err.message);
+      }
+    }
+    return { success: true, orderId: cleanId, status: cleanStatus };
+  }
+
+  /**
+   * Admin Users List (Phase 1)
+   */
+  async getAdminUsers() {
+    if (this.supabaseClient) {
+      try {
+        const { data: users, error } = await this.supabaseClient
+          .from('users')
+          .select('id, email, name, username, role, balance, plan, created_at, updated_at')
+          .order('created_at', { ascending: false });
+        if (!error && Array.isArray(users) && users.length > 0) {
+          return users;
+        }
+      } catch (err) {
+        console.warn('[DB] Supabase getAdminUsers error:', err.message);
+      }
+    }
+    return Object.values(this.localDb.users || {});
+  }
+
+  /**
+   * Admin Adjust User Balance (Phase 1)
+   */
+  async adjustUserBalance(userId, type, amount, reason = '') {
+    const cleanId = String(userId).trim();
+    const numAmt = Math.abs(Number(amount) || 0);
+    if (numAmt <= 0) throw new Error('Invalid balance adjustment amount.');
+
+    let currentBalance = 0;
+    let userFound = false;
+
+    // Check localDb
+    if (this.localDb.users && this.localDb.users[cleanId]) {
+      currentBalance = Number(this.localDb.users[cleanId].balance || 0);
+      userFound = true;
+    }
+
+    // Check Supabase
+    if (this.supabaseClient) {
+      const { data } = await this.supabaseClient.from('users').select('balance').eq('id', cleanId).maybeSingle();
+      if (data) {
+        currentBalance = Number(data.balance || 0);
+        userFound = true;
+      }
+    }
+
+    if (!userFound) {
+      throw new Error('User ' + cleanId + ' not found.');
+    }
+
+    const newBalance = type === 'debit' 
+      ? Math.max(0, currentBalance - numAmt) 
+      : (currentBalance + numAmt);
+
+    // Save to localDb
+    if (this.localDb.users && this.localDb.users[cleanId]) {
+      this.localDb.users[cleanId].balance = newBalance;
+      this.saveLocalDB();
+    }
+
+    // Save to Supabase
+    if (this.supabaseClient) {
+      await this.supabaseClient.from('users').update({
+        balance: newBalance,
+        updated_at: new Date().toISOString()
+      }).eq('id', cleanId);
+
+      await this.supabaseClient.from('audit_logs').insert({
+        user_id: cleanId,
+        action: 'balance_adjustment_' + type,
+        details: { previousBalance: currentBalance, newBalance, amount: numAmt, reason },
+        created_at: new Date().toISOString()
+      });
+    }
+
+    return { success: true, userId: cleanId, previousBalance: currentBalance, newBalance };
+  }
+
+  /**
+   * Admin Update User Role / Status (Phase 1)
+   */
+  async updateUserRole(userId, role) {
+    const cleanId = String(userId).trim();
+    const cleanRole = String(role).trim().toLowerCase();
+
+    if (this.localDb.users && this.localDb.users[cleanId]) {
+      this.localDb.users[cleanId].role = cleanRole;
+      this.saveLocalDB();
+    }
+
+    if (this.supabaseClient) {
+      await this.supabaseClient.from('users').update({
+        role: cleanRole,
+        updated_at: new Date().toISOString()
+      }).eq('id', cleanId);
+
+      await this.supabaseClient.from('audit_logs').insert({
+        user_id: cleanId,
+        action: 'user_role_update',
+        details: { role: cleanRole },
+        created_at: new Date().toISOString()
+      });
+    }
+
+    return { success: true, userId: cleanId, role: cleanRole };
+  }
+
+}

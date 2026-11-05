@@ -1550,10 +1550,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =========================================================================
-    // 11. Secure Admin Access Keys API (/api/admin/keys)
-    // Server-side RLS enforcement preventing public Supabase key leakage
+    // 11. Secure Admin Dashboard API (/api/admin/*)
+    // Server-side RLS enforcement for Overview, Orders, Users & Access Keys
     // =========================================================================
-    if (pathname.startsWith('/api/admin/keys')) {
+    if (pathname.startsWith('/api/admin/')) {
       const adminKey = req.headers['x-admin-key'] || (req.headers['authorization'] || '').replace('Bearer ', '').trim();
       const validAdminPass = process.env.VITE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'admin';
       const isAuthorized = adminKey === validAdminPass || adminKey === 'admin' || adminKey === 'admin123';
@@ -1562,42 +1562,90 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(401, { error: 'Unauthorized: Administrative credentials required.' });
       }
 
-      // GET /api/admin/keys
-      if (req.method === 'GET') {
-        const keys = await dbManager.listAccessKeys();
-        return sendJSON(200, { success: true, keys });
+      // --- 1. Admin Overview (Phase 1) ---
+      if (pathname === '/api/admin/overview' && req.method === 'GET') {
+        const overviewData = await dbManager.getAdminOverview();
+        return sendJSON(200, { success: true, ...overviewData });
       }
 
-      // POST /api/admin/keys
-      if (req.method === 'POST') {
-        const body = await readBody();
-        if (!body.key) {
-          return sendJSON(400, { error: 'Key cannot be empty.' });
-        }
-        const created = await dbManager.createAccessKey(body);
-        return sendJSON(200, { success: true, key: created });
+      // --- 2. Admin Orders List & Status Updates (Phase 1) ---
+      if (pathname === '/api/admin/orders' && req.method === 'GET') {
+        const orders = await dbManager.getAdminOrders();
+        return sendJSON(200, { success: true, orders });
       }
 
-      // PUT /api/admin/keys
-      if (req.method === 'PUT') {
+      if (pathname === '/api/admin/orders/status' && req.method === 'POST') {
         const body = await readBody();
-        if (!body.key) {
-          return sendJSON(400, { error: 'Key is required for update.' });
+        if (!body.orderId || !body.status) {
+          return sendJSON(400, { error: 'orderId and status are required.' });
         }
-        const { key, ...updates } = body;
-        const updated = await dbManager.updateAccessKey(key, updates);
-        return sendJSON(200, { success: true, key: updated });
+        const result = await dbManager.updateAdminOrderStatus(body.orderId, body.status, body.reason || '');
+        return sendJSON(200, { success: true, ...result });
       }
 
-      // DELETE /api/admin/keys
-      if (req.method === 'DELETE') {
+      // --- 3. Admin Users List, Balance & Role Management (Phase 1) ---
+      if (pathname === '/api/admin/users' && req.method === 'GET') {
+        const users = await dbManager.getAdminUsers();
+        return sendJSON(200, { success: true, users });
+      }
+
+      if (pathname === '/api/admin/users/balance' && req.method === 'POST') {
         const body = await readBody();
-        const keyToDelete = body.key || parsedUrl.searchParams.get('key');
-        if (!keyToDelete) {
-          return sendJSON(400, { error: 'Key is required for deletion.' });
+        if (!body.userId || !body.type || body.amount === undefined) {
+          return sendJSON(400, { error: 'userId, type (credit/debit), and amount are required.' });
         }
-        await dbManager.deleteAccessKey(keyToDelete);
-        return sendJSON(200, { success: true });
+        const result = await dbManager.adjustUserBalance(body.userId, body.type, body.amount, body.reason || '');
+        return sendJSON(200, { success: true, ...result });
+      }
+
+      if (pathname === '/api/admin/users/role' && req.method === 'POST') {
+        const body = await readBody();
+        if (!body.userId || !body.role) {
+          return sendJSON(400, { error: 'userId and role are required.' });
+        }
+        const result = await dbManager.updateUserRole(body.userId, body.role);
+        return sendJSON(200, { success: true, ...result });
+      }
+
+      // --- 4. Admin Access Keys Management ---
+      if (pathname.startsWith('/api/admin/keys')) {
+        // GET /api/admin/keys
+        if (req.method === 'GET') {
+          const keys = await dbManager.listAccessKeys();
+          return sendJSON(200, { success: true, keys });
+        }
+
+        // POST /api/admin/keys
+        if (req.method === 'POST') {
+          const body = await readBody();
+          if (!body.key) {
+            return sendJSON(400, { error: 'Key cannot be empty.' });
+          }
+          const created = await dbManager.createAccessKey(body);
+          return sendJSON(200, { success: true, key: created });
+        }
+
+        // PUT /api/admin/keys
+        if (req.method === 'PUT') {
+          const body = await readBody();
+          if (!body.key) {
+            return sendJSON(400, { error: 'Key is required for update.' });
+          }
+          const { key, ...updates } = body;
+          const updated = await dbManager.updateAccessKey(key, updates);
+          return sendJSON(200, { success: true, key: updated });
+        }
+
+        // DELETE /api/admin/keys
+        if (req.method === 'DELETE') {
+          const body = await readBody();
+          const keyToDelete = body.key || parsedUrl.searchParams.get('key');
+          if (!keyToDelete) {
+            return sendJSON(400, { error: 'Key is required for deletion.' });
+          }
+          await dbManager.deleteAccessKey(keyToDelete);
+          return sendJSON(200, { success: true });
+        }
       }
     }
 
