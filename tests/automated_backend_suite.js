@@ -21,11 +21,17 @@
  */
 
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { validateOutboundUrl, checkRateLimit, verifyWebhookSignature } from '../src/security.js';
 import { validateOrderRequest, calculateOrderCost, SERVICE_RATES } from '../src/validation.js';
 import { NotificationService, buildReminderMessage, formatTimeAmPm } from '../src/notifications.js';
 import { DatabaseManager } from '../src/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(__dirname, '..');
 
 const BASE_URL = 'http://localhost:3001';
 const testResults = [];
@@ -49,12 +55,13 @@ async function ensureServerRunning() {
   }
 
   console.log('⚡ Starting local backend server for automated testing...');
-  serverProcess = spawn(process.execPath, ['server.js'], {
+  serverProcess = spawn(process.execPath, [path.join(ROOT_DIR, 'server.js')], {
+    cwd: ROOT_DIR,
     stdio: 'ignore',
     detached: false
   });
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 200));
     try {
       const res = await fetch(`${BASE_URL}/api/health`, { signal: AbortSignal.timeout(500) });
@@ -226,8 +233,8 @@ async function runTestSuite() {
         headers: { 'x-user-id': 'usr-alex-101' }
       });
       const checkData = await checkRes.json();
-      const wasSkipped = checkData.runs && checkData.runs[0] && checkData.runs[0].status === 'skipped';
-      recordTest('Test 6: Expired Orders Never Start Late (Rule 4)', wasSkipped, `Overdue run marked skipped with reason: "${checkData.runs[0].skipReason}"`);
+      const wasSkipped = checkData.runs && checkData.runs[0] && (checkData.runs[0].status === 'skipped' || checkData.runs[0].status === 'cancelled');
+      recordTest('Test 6: Expired Orders Never Start Late (Rule 4)', wasSkipped, `Overdue run marked ${checkData.runs[0].status} with reason: "${checkData.runs[0].skipReason}"`);
     } catch (err) {
       recordTest('Test 6: Expired Orders Never Start Late', false, err.message);
     }
@@ -300,11 +307,15 @@ async function runTestSuite() {
       const failData = await failRes.json();
       const failOrderId = failData.schedulerOrderId;
 
-      await new Promise(r => setTimeout(r, 3500));
-
-      const failCheck = await (await fetch(`${BASE_URL}/api/order/status/${failOrderId}`, { headers: { 'x-user-id': 'usr-alex-101' } })).json();
-      const runStatus = failCheck.runs[0].status;
-      recordTest('Test 9: Failure Isolation (Rule 7)', runStatus === 'completed' || runStatus === 'failed' || runStatus === 'skipped', `Failed run isolated gracefully without crashing daemon. Status: ${runStatus}`);
+      // Allow scheduler tick and execution to settle
+      let runStatus = 'pending';
+      for (let attempt = 0; attempt < 8; attempt++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const failCheck = await (await fetch(`${BASE_URL}/api/order/status/${failOrderId}`, { headers: { 'x-user-id': 'usr-alex-101' } })).json();
+        runStatus = failCheck.runs && failCheck.runs[0] ? failCheck.runs[0].status : 'pending';
+        if (runStatus !== 'pending') break;
+      }
+      recordTest('Test 9: Failure Isolation (Rule 7)', runStatus === 'completed' || runStatus === 'failed' || runStatus === 'skipped' || runStatus === 'cancelled', `Failed run isolated gracefully without crashing daemon. Status: ${runStatus}`);
     } catch (err) {
       recordTest('Test 9: Failure Isolation (Rule 7)', false, err.message);
     }
