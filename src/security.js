@@ -159,7 +159,7 @@ export async function authenticateRequest(req, db) {
         if (user.token === token || user.id === token || uid === token) {
           return {
             id: uid,
-            email: user.email || `${uid}@truesmm.io`,
+            email: user.email || `${uid}@bhavishyaa.com`,
             role: user.role || 'user',
             balance: typeof user.balance === 'number' ? user.balance : 500.00,
             token
@@ -211,7 +211,7 @@ export async function authenticateRequest(req, db) {
     const user = db.users?.[userIdHeader];
     return {
       id: userIdHeader,
-      email: user?.email || `${userIdHeader}@truesmm.io`,
+      email: user?.email || `${userIdHeader}@bhavishyaa.com`,
       role: user?.role || 'user',
       balance: typeof user?.balance === 'number' ? user.balance : 500.00
     };
