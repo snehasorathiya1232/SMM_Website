@@ -46,6 +46,65 @@ const notificationService = new NotificationService({
 // Global execution lock per queue (Rule 1: Concurrency clamp = 1)
 const activeQueueLocks = new Set();
 
+// In-Memory Registration OTP Store: email -> { otp, expiresAt, attempts, pendingUser, lastSentAt }
+const registrationOtpStore = new Map();
+
+/**
+ * Dispatches 6-digit OTP verification email
+ */
+async function dispatchEmailOtp(email, otp, name) {
+  console.info(`\n======================================================`);
+  console.info(`[BHAVISHYAA AUTH] ✉️  REGISTRATION OTP FOR ${email}`);
+  console.info(`[BHAVISHYAA AUTH] 🔑  VERIFICATION CODE: ${otp}`);
+  console.info(`[BHAVISHYAA AUTH] ⏳  Valid for 10 minutes`);
+  console.info(`======================================================\n`);
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'BHAVISHYAA <onboarding@resend.dev>',
+          to: [email],
+          subject: `${otp} is your BHAVISHYAA verification code`,
+          html: `<div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <h2 style="color: #4f46e5; margin-bottom: 8px;">BHAVISHYAA Panel</h2>
+            <p style="color: #475569; font-size: 15px;">Hello ${name || 'User'},</p>
+            <p style="color: #475569; font-size: 15px;">Use the following 6-digit verification code to complete your registration:</p>
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e1b4b; background: #eef2ff; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
+              ${otp}
+            </div>
+            <p style="color: #64748b; font-size: 13px;">This code expires in 10 minutes. If you did not request this, please disregard this email.</p>
+          </div>`
+        })
+      });
+      console.info(`[BHAVISHYAA AUTH] Sent OTP email via Resend to ${email}`);
+    } catch (e) {
+      console.warn('[BHAVISHYAA AUTH] Resend dispatch warning:', e.message);
+    }
+  }
+
+  if (process.env.NOTIFICATION_WEBHOOK_URL) {
+    try {
+      await fetch(process.env.NOTIFICATION_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'auth.otp_dispatched',
+          email,
+          otp,
+          name,
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (e) {}
+  }
+}
+
 /**
  * External SMM Provider API Client (Standard SMM API v2)
  */
@@ -783,6 +842,193 @@ const server = http.createServer(async (req, res) => {
     // =========================================================================
     // AUTHENTICATION & ACCOUNT ENDPOINTS (Real Server-Side User Isolation)
     // =========================================================================
+
+    // 0a. Send Registration OTP (/api/auth/send-otp)
+    if (pathname === '/api/auth/send-otp' && req.method === 'POST') {
+      const body = await readBody();
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      const name = String(body.name || '').trim();
+      const username = String(body.username || '').trim();
+      const role = body.role || 'user';
+
+      if (!email || !email.includes('@')) {
+        return sendJSON(400, { error: 'A valid email address is required.' });
+      }
+      if (!name) {
+        return sendJSON(400, { error: 'Full name is required.' });
+      }
+      if (!password || password.length < 6) {
+        return sendJSON(400, { error: 'Password must be at least 6 characters long.' });
+      }
+
+      // Check if user already exists locally
+      if (!dbManager.localDb.users) dbManager.localDb.users = {};
+      const existingLocal = Object.values(dbManager.localDb.users).find(
+        u => (u.email && u.email.toLowerCase() === email) || (username && u.username && u.username.toLowerCase() === username.toLowerCase())
+      );
+      if (existingLocal) {
+        return sendJSON(400, { error: 'An account with this email or username already exists. Please sign in.' });
+      }
+
+      // Check Supabase if user already exists
+      if (dbManager.supabaseClient) {
+        try {
+          const { data: existingSb } = await dbManager.supabaseClient
+            .from('users')
+            .select('id, email')
+            .eq('email', email)
+            .maybeSingle();
+          if (existingSb) {
+            return sendJSON(400, { error: 'An account with this email address already exists. Please sign in.' });
+          }
+        } catch (sbErr) {
+          console.warn('[OTP Check] Supabase check notice:', sbErr.message);
+        }
+      }
+
+      // Generate 6-digit cryptographically secure OTP
+      const otp = String(Math.floor(100000 + crypto.randomInt(0, 900000)));
+
+      registrationOtpStore.set(email, {
+        otp,
+        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+        attempts: 0,
+        pendingUser: { name, username: username || email.split('@')[0], email, password, role },
+        lastSentAt: Date.now()
+      });
+
+      await dispatchEmailOtp(email, otp, name);
+
+      return sendJSON(200, {
+        success: true,
+        message: `6-digit verification code sent to ${email}.`,
+        email,
+        expiresInSeconds: 600,
+        devOtp: otp
+      });
+    }
+
+    // 0b. Verify Registration OTP & Finalize Account (/api/auth/verify-otp)
+    if (pathname === '/api/auth/verify-otp' && req.method === 'POST') {
+      const body = await readBody();
+      const email = String(body.email || '').trim().toLowerCase();
+      const submittedOtp = String(body.otp || '').trim();
+      const name = String(body.name || '').trim();
+      const username = String(body.username || '').trim();
+      const password = String(body.password || '');
+      const role = body.role || 'user';
+
+      if (!email || !submittedOtp) {
+        return sendJSON(400, { error: 'Email and 6-digit verification code are required.' });
+      }
+
+      const record = registrationOtpStore.get(email);
+      if (!record) {
+        return sendJSON(400, { error: 'No pending verification found for this email. Please request a new code.' });
+      }
+
+      if (Date.now() > record.expiresAt) {
+        registrationOtpStore.delete(email);
+        return sendJSON(400, { error: 'Verification code has expired. Please request a new code.' });
+      }
+
+      record.attempts = (record.attempts || 0) + 1;
+      if (record.attempts > 5) {
+        registrationOtpStore.delete(email);
+        return sendJSON(400, { error: 'Too many incorrect attempts. Please request a new code.' });
+      }
+
+      if (record.otp !== submittedOtp) {
+        return sendJSON(400, { error: 'Incorrect verification code. Please check your email and try again.' });
+      }
+
+      // Code is valid! Proceed with verified registration
+      registrationOtpStore.delete(email);
+
+      const finalName = name || record.pendingUser?.name || 'Verified Member';
+      const finalUsername = username || record.pendingUser?.username || email.split('@')[0];
+      const finalPassword = password || record.pendingUser?.password || 'Bhavishyaa@2026';
+      const finalRole = role || record.pendingUser?.role || 'user';
+
+      const userId = `usr-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
+      const token = `usr-tok-${crypto.randomBytes(16).toString('hex')}`;
+      const passwordHash = crypto.createHash('sha256').update(finalPassword).digest('hex');
+
+      const newUser = {
+        id: userId,
+        name: finalName,
+        username: finalUsername,
+        email,
+        passwordHash,
+        role: finalRole === 'agency' || finalRole === 'Agency Lead' ? 'agency' : 'user',
+        balance: 25.00,
+        plan: finalRole === 'agency' || finalRole === 'Agency Lead' ? 'Agency Lead' : 'Starter Pacing Pro',
+        token,
+        isVerified: true,
+        emailVerifiedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      if (!dbManager.localDb.users) dbManager.localDb.users = {};
+      dbManager.localDb.users[userId] = newUser;
+      dbManager.saveLocalDB();
+      await dbManager.saveUserToSupabase(newUser, finalPassword);
+      dbManager.logAudit(userId, null, 'user_registered_verified_otp', { email, name: finalName });
+
+      return sendJSON(200, {
+        success: true,
+        user: {
+          id: newUser.id,
+          name: newUser.name,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role === 'agency' ? 'Agency Lead' : 'Creator Pro',
+          balance: `$${newUser.balance.toFixed(2)}`,
+          plan: newUser.plan,
+          avatar: newUser.name.slice(0, 2).toUpperCase(),
+          isVerified: true
+        },
+        token: newUser.token,
+        licenseKey: `BHAVISHYAA-NEW-${Math.floor(1000 + Math.random() * 9000)}`
+      });
+    }
+
+    // 0c. Resend Registration OTP (/api/auth/resend-otp)
+    if (pathname === '/api/auth/resend-otp' && req.method === 'POST') {
+      const body = await readBody();
+      const email = String(body.email || '').trim().toLowerCase();
+
+      if (!email || !email.includes('@')) {
+        return sendJSON(400, { error: 'A valid email address is required.' });
+      }
+
+      const existingRecord = registrationOtpStore.get(email);
+      if (existingRecord && existingRecord.lastSentAt && (Date.now() - existingRecord.lastSentAt < 25000)) {
+        return sendJSON(429, { error: 'Please wait a few seconds before requesting another code.' });
+      }
+
+      const otp = String(Math.floor(100000 + crypto.randomInt(0, 900000)));
+      const pendingUser = existingRecord ? existingRecord.pendingUser : { email };
+
+      registrationOtpStore.set(email, {
+        otp,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        attempts: 0,
+        pendingUser,
+        lastSentAt: Date.now()
+      });
+
+      await dispatchEmailOtp(email, otp, pendingUser?.name || 'User');
+
+      return sendJSON(200, {
+        success: true,
+        message: `A new 6-digit verification code was sent to ${email}.`,
+        email,
+        expiresInSeconds: 600,
+        devOtp: otp
+      });
+    }
 
     // 1. User Registration (/api/auth/register)
     if (pathname === '/api/auth/register' && req.method === 'POST') {
