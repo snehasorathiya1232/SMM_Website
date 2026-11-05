@@ -1144,7 +1144,6 @@ const server = http.createServer(async (req, res) => {
       const name = String(body.name || '').trim();
       const username = String(body.username || '').trim();
       const role = body.role || 'user';
-      const otp = String(body.otp || '').trim();
 
       const emailVerification = await verifyEmailIsReal(email);
       if (!emailVerification.valid) {
@@ -1157,29 +1156,29 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(400, { error: 'Full name is required.' });
       }
 
-      // Enforce email verification OTP
-      if (!otp) {
-        return sendJSON(400, {
-          error: 'Email verification code is required. Please verify your email via /api/auth/send-otp.'
-        });
-      }
-
-      const record = registrationOtpStore.get(email);
-      if (!record || record.otp !== otp || Date.now() > record.expiresAt) {
-        return sendJSON(400, {
-          error: 'Invalid or expired email verification code. Please request a new code.'
-        });
-      }
-
-      registrationOtpStore.delete(email);
-
       if (!dbManager.localDb.users) dbManager.localDb.users = {};
 
       const existingUser = Object.values(dbManager.localDb.users).find(
         u => (u.email && u.email.toLowerCase() === email) || (username && u.username && u.username.toLowerCase() === username.toLowerCase())
       );
       if (existingUser) {
-        return sendJSON(400, { error: 'An account with this email or username already exists.' });
+        return sendJSON(400, { error: 'An account with this email or username already exists. Please sign in.' });
+      }
+
+      // Check Supabase if user already exists
+      if (dbManager.supabaseClient) {
+        try {
+          const { data: existingSb } = await dbManager.supabaseClient
+            .from('users')
+            .select('id, email')
+            .eq('email', email)
+            .maybeSingle();
+          if (existingSb) {
+            return sendJSON(400, { error: 'An account with this email address already exists. Please sign in.' });
+          }
+        } catch (sbErr) {
+          console.warn('[Register Check] Supabase check notice:', sbErr.message);
+        }
       }
 
       const userId = `usr-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;

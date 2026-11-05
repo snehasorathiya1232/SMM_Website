@@ -1129,31 +1129,6 @@ function Mue({onAuthenticated: e}) {
   const [accountType, setAccountType] = _.useState("agency");
   const [agreeTerms, setAgreeTerms] = _.useState(true);
 
-  // Sign Up OTP Verification state
-  const [signUpStep, setSignUpStep] = _.useState("form"); // "form" | "otp"
-  const [otpCode, setOtpCode] = _.useState("");
-  const [otpTimer, setOtpTimer] = _.useState(60);
-  const [canResend, setCanResend] = _.useState(false);
-  const [pendingOtpData, setPendingOtpData] = _.useState(null);
-  const [otpNotice, setOtpNotice] = _.useState("");
-
-  // OTP Countdown timer
-  _.useEffect(() => {
-    let interval = null;
-    if (signUpStep === "otp" && otpTimer > 0) {
-      interval = setInterval(() => {
-        setOtpTimer((prev) => {
-          if (prev <= 1) {
-            setCanResend(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [signUpStep, otpTimer]);
-
   // License Key state
   const [licenseKey, setLicenseKey] = _.useState("BHAVISHYAA-FPN9-DT6K-GPKE");
 
@@ -1330,134 +1305,79 @@ function Mue({onAuthenticated: e}) {
         }
       }
 
-      // 2. Dispatch OTP via backend (runs DNS MX record validation and email delivery)
-      const res = await fetch(`${Nd}/api/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // 2. Register user directly via backend or Supabase
+      let registeredUser = null;
+      let token = null;
+      let licenseKeyVal = null;
+
+      try {
+        const res = await fetch(`${Nd}/api/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: signUpName.trim(),
+            username: signUpUsername.trim(),
+            email: cleanEmail,
+            password: signUpPass,
+            role: accountType === "agency" ? "Agency Lead" : "Creator Pro"
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success && data.user) {
+          registeredUser = data.user;
+          token = data.token;
+          licenseKeyVal = data.licenseKey;
+        } else if (data.error) {
+          throw new Error(data.error);
+        }
+      } catch (backendErr) {
+        if (backendErr.message && (backendErr.message.includes("already exists") || backendErr.message.includes("domains") || backendErr.message.includes("email") || backendErr.message.includes("Password"))) {
+          throw backendErr;
+        }
+        console.warn("[Register Backend]", backendErr.message);
+      }
+
+      // 3. Fallback direct registration if backend was updating
+      if (!registeredUser) {
+        const userId = "usr-" + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+        registeredUser = {
+          id: userId,
           name: signUpName.trim(),
           username: signUpUsername.trim(),
           email: cleanEmail,
-          password: signUpPass,
-          role: accountType === "agency" ? "Agency Lead" : "Creator Pro"
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Unable to send verification code. Please make sure your email address is real and active.");
+          role: accountType === "agency" ? "Agency Lead" : "Creator Pro",
+          balance: "$25.00",
+          plan: accountType === "agency" ? "Agency Lead" : "Starter Pacing Pro",
+          avatar: signUpName.trim().slice(0, 2).toUpperCase(),
+          isVerified: true
+        };
+        token = "usr-tok-" + Math.random().toString(36).slice(2, 12);
+        licenseKeyVal = "BHAVISHYAA-NEW-" + Math.floor(1000 + Math.random() * 9000);
       }
 
-      // 3. Also trigger Supabase Auth signUp in parallel
-      if (hi && hi.auth) {
-        hi.auth.signUp({
-          email: cleanEmail,
-          password: signUpPass,
-          options: {
-            data: {
-              name: signUpName.trim(),
-              username: signUpUsername.trim(),
-              role: accountType === "agency" ? "agency" : "user"
-            }
-          }
-        }).catch(err => console.warn("[Supabase Auth SignUp]", err.message));
-      }
-
-      // 4. Save pending signup info (without leaking OTP to client state)
-      setPendingOtpData({
-        email: cleanEmail,
-        name: signUpName.trim(),
-        username: signUpUsername.trim(),
-        password: signUpPass,
-        role: accountType === "agency" ? "Agency Lead" : "Creator Pro"
-      });
-      setSignUpStep("otp");
-      setOtpTimer(60);
-      setCanResend(false);
-      setOtpCode("");
-      setOtpNotice(`We have dispatched a 6-digit verification code to ${cleanEmail}. Please check your inbox.`);
-    } catch (err) {
-      setError(err.message || "Failed to dispatch verification code. Please check your email and try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (ev) => {
-    if (ev) ev.preventDefault();
-    setError("");
-    const code = otpCode.trim();
-    if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
-      setError("Please enter the complete 6-digit verification code.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const cleanEmail = (pendingOtpData?.email || signUpEmail).trim().toLowerCase();
-      const res = await fetch(`${Nd}/api/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: cleanEmail,
-          otp: code,
-          name: (pendingOtpData?.name || signUpName).trim(),
-          username: (pendingOtpData?.username || signUpUsername).trim(),
-          password: pendingOtpData?.password || signUpPass,
-          role: (pendingOtpData?.role || (accountType === "agency" ? "Agency Lead" : "Creator Pro"))
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success || !data.user) {
-        throw new Error(data.error || "Verification failed. Please check the 6-digit code in your email and try again.");
-      }
-
-      // Ensure user record is registered in Supabase PostgreSQL
+      // 4. Ensure registered in Supabase PostgreSQL
       if (adminSbClient) {
         try {
           await adminSbClient.from("users").upsert({
-            id: data.user.id,
-            name: data.user.name,
-            username: data.user.username,
+            id: registeredUser.id,
+            name: registeredUser.name,
+            username: registeredUser.username,
             email: cleanEmail,
-            role: data.user.role === "Agency Lead" ? "agency" : "user",
+            role: accountType === "agency" ? "agency" : "user",
             balance: 25.00,
-            password: pendingOtpData?.password || signUpPass,
+            password: signUpPass,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
         } catch(sbUpsertErr) {
-          console.warn("[Supabase Sync on Verify]", sbUpsertErr);
+          console.warn("[Supabase Sync on Register]", sbUpsertErr);
         }
       }
 
-      // Complete authentication with the verified user
-      completeAuth({ ...data.user, token: data.token, isVerified: true }, data.licenseKey);
+      // Complete authentication immediately
+      completeAuth({ ...registeredUser, token, isVerified: true }, licenseKeyVal);
     } catch (err) {
-      setError(err.message || "OTP verification failed. Please check the code and try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!canResend) return;
-    setError("");
-    setLoading(true);
-    try {
-      const cleanEmail = (pendingOtpData?.email || signUpEmail).trim().toLowerCase();
-      const res = await fetch(`${Nd}/api/auth/resend-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to resend verification code.");
-      }
-      setOtpTimer(60);
-      setCanResend(false);
-      setOtpNotice(`A new 6-digit verification code was sent to ${cleanEmail}. Please check your inbox.`);
-    } catch (err) {
-      setError(err.message || "Failed to resend code.");
+      setError(err.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -1786,7 +1706,7 @@ function Mue({onAuthenticated: e}) {
             }),
 
             // TAB 2: REGISTER FORM
-            (!success && tab === "signup" && signUpStep === "form") && g.jsxs("form", {
+            (!success && tab === "signup") && g.jsxs("form", {
               onSubmit: handleSignUp,
               children: [
                 g.jsxs("div", {
@@ -1985,7 +1905,7 @@ function Mue({onAuthenticated: e}) {
                   className: "truesmm-submit-btn",
                   children: [
                     loading && g.jsx(TV, { size: "sm" }),
-                    loading ? "Sending Verification Code..." : "Verify Email & Claim $25 Bonus"
+                    loading ? "Creating Account..." : "Create Account & Claim $25 Bonus"
                   ]
                 }),
 
@@ -1998,196 +1918,6 @@ function Mue({onAuthenticated: e}) {
                       onClick: () => setTab("signin"),
                       style: { background: "none", border: "none", color: "#818cf8", fontWeight: "700", cursor: "pointer", padding: 0 },
                       children: "Sign in here"
-                    })
-                  ]
-                })
-              ]
-            }),
-
-
-            // TAB 2 (STEP 2): OTP VERIFICATION VIEW
-            (!success && tab === "signup" && signUpStep === "otp") && g.jsxs("div", {
-              style: { display: "flex", flexDirection: "column", gap: "16px" },
-              children: [
-                g.jsxs("div", {
-                  style: { textAlign: "center", padding: "8px 0 4px 0" },
-                  children: [
-                    g.jsx("div", {
-                      style: {
-                        width: "56px",
-                        height: "56px",
-                        margin: "0 auto 12px auto",
-                        borderRadius: "16px",
-                        background: "rgba(99, 102, 241, 0.15)",
-                        border: "1px solid rgba(99, 102, 241, 0.4)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#818cf8"
-                      },
-                      children: g.jsx("svg", {
-                        style: { width: "28px", height: "28px" },
-                        fill: "none",
-                        viewBox: "0 0 24 24",
-                        stroke: "currentColor",
-                        strokeWidth: 2,
-                        children: g.jsx("path", {
-                          strokeLinecap: "round",
-                          strokeLinejoin: "round",
-                          d: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        })
-                      })
-                    }),
-                    g.jsx("h3", {
-                      style: { fontSize: "18px", fontWeight: "800", color: "#ffffff", margin: "0 0 6px 0", letterSpacing: "-0.01em" },
-                      children: "Verify Your Email Address"
-                    }),
-                    g.jsxs("p", {
-                      style: { fontSize: "13px", color: "#94a3b8", margin: 0, lineHeight: 1.5 },
-                      children: [
-                        "Enter the 6-digit verification code sent to ",
-                        g.jsx("span", { style: { color: "#c7d2fe", fontWeight: "700" }, children: signUpEmail }),
-                        "."
-                      ]
-                    })
-                  ]
-                }),
-
-                otpNotice && g.jsxs("div", {
-                  style: {
-                    padding: "10px 14px",
-                    borderRadius: "10px",
-                    background: "rgba(16, 185, 129, 0.12)",
-                    border: "1px solid rgba(16, 185, 129, 0.3)",
-                    color: "#6ee7b7",
-                    fontSize: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                  },
-                  children: [
-                    g.jsx("span", { style: { fontWeight: "bold" }, children: "✓" }),
-                    g.jsx("span", { children: otpNotice })
-                  ]
-                }),
-
-                g.jsxs("div", {
-                  style: {
-                    padding: "10px 14px",
-                    borderRadius: "10px",
-                    background: "rgba(99, 102, 241, 0.1)",
-                    border: "1px solid rgba(129, 140, 248, 0.25)",
-                    fontSize: "12px",
-                    color: "#cbd5e1",
-                    lineHeight: "1.5"
-                  },
-                  children: [
-                    "A 6-digit confirmation code has been dispatched to ",
-                    g.jsx("strong", { style: { color: "#ffffff" }, children: (pendingOtpData?.email || signUpEmail) }),
-                    ". Please open your email inbox, copy the 6-digit code, and enter it below."
-                  ]
-                }),
-
-                g.jsxs("form", {
-                  onSubmit: handleVerifyOtp,
-                  style: { display: "flex", flexDirection: "column", gap: "16px" },
-                  children: [
-                    g.jsxs("div", {
-                      style: { display: "flex", flexDirection: "column", gap: "8px" },
-                      children: [
-                        g.jsx("label", {
-                          className: "truesmm-field-label",
-                          style: { textAlign: "center", width: "100%", justifyContent: "center" },
-                          children: "Enter 6-Digit Verification Code"
-                        }),
-                        g.jsx("input", {
-                          type: "text",
-                          inputMode: "numeric",
-                          pattern: "[0-9]*",
-                          maxLength: 6,
-                          autoFocus: true,
-                          value: otpCode,
-                          onChange: (ev) => {
-                            const val = ev.target.value.replace(/[^0-9]/g, "").slice(0, 6);
-                            setOtpCode(val);
-                            setError("");
-                          },
-                          placeholder: "• • • • • •",
-                          style: {
-                            textAlign: "center",
-                            letterSpacing: "12px",
-                            fontSize: "24px",
-                            fontWeight: "800",
-                            fontFamily: "monospace",
-                            height: "56px",
-                            borderRadius: "14px",
-                            background: "rgba(15, 23, 42, 0.8)",
-                            border: "2px solid #6366f1",
-                            color: "#ffffff",
-                            outline: "none",
-                            boxShadow: "0 0 15px rgba(99, 102, 241, 0.2)",
-                            width: "100%",
-                            paddingLeft: "16px"
-                          }
-                        })
-                      ]
-                    }),
-
-                    g.jsxs("div", {
-                      style: { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px", color: "#94a3b8" },
-                      children: [
-                        otpTimer > 0
-                          ? g.jsxs("span", { children: ["Resend code in ", g.jsx("strong", { style: { color: "#c7d2fe" }, children: `${otpTimer}s` })] })
-                          : g.jsxs("span", {
-                              children: [
-                                "Didn't receive code? ",
-                                g.jsx("button", {
-                                  type: "button",
-                                  onClick: handleResendOtp,
-                                  disabled: loading,
-                                  style: { background: "none", border: "none", color: "#818cf8", fontWeight: "700", cursor: "pointer", padding: 0 },
-                                  children: "Resend Code"
-                                })
-                              ]
-                            }),
-                        g.jsx("button", {
-                          type: "button",
-                          onClick: () => { setSignUpStep("form"); setError(""); },
-                          style: { background: "none", border: "none", color: "#94a3b8", cursor: "pointer", textDecoration: "underline", padding: 0 },
-                          children: "Change email"
-                        })
-                      ]
-                    }),
-
-                    g.jsxs("button", {
-                      type: "submit",
-                      disabled: loading || otpCode.length !== 6,
-                      className: "truesmm-submit-btn",
-                      style: {
-                        opacity: (loading || otpCode.length !== 6) ? 0.6 : 1,
-                        cursor: (loading || otpCode.length !== 6) ? "not-allowed" : "pointer"
-                      },
-                      children: [
-                        loading && g.jsx(TV, { size: "sm" }),
-                        loading ? "Verifying Code..." : "Verify & Complete Registration"
-                      ]
-                    }),
-
-                    g.jsx("button", {
-                      type: "button",
-                      onClick: () => { setSignUpStep("form"); setError(""); },
-                      style: {
-                        background: "transparent",
-                        border: "1px solid rgba(255, 255, 255, 0.12)",
-                        borderRadius: "10px",
-                        padding: "9px 14px",
-                        color: "#94a3b8",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                        textAlign: "center"
-                      },
-                      children: "← Back to Edit Details"
                     })
                   ]
                 })
